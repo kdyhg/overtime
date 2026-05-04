@@ -2,577 +2,233 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <title>초과근무 관리 시스템</title>
-  <style>
-    :root {
-      --colors-primary: #0066cc;
-      --colors-primary-focus: #0071e3;
-      --colors-canvas: #ffffff;
-      --colors-canvas-parchment: #f5f5f7;
-      --colors-ink: #1d1d1f;
-      --colors-error: #ff3b30;
-    }
-
-    body { 
-      -webkit-tap-highlight-color: transparent;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: var(--colors-canvas-parchment);
-      color: var(--colors-ink);
-      margin: 0;
-      padding: 0;
-      font-size: 17px;
-      line-height: 1.47;
-      letter-spacing: -0.374px;
-    }
-
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-    .tab-btn.active { 
-      color: var(--colors-primary); 
-      border-bottom: 2px solid var(--colors-primary); 
-      font-weight: 600; 
-    }
-
-    .calendar-grid { 
-      display: grid; 
-      grid-template-columns: repeat(7, 1fr); 
-      gap: 6px; 
-    }
-    .calendar-day { 
-      aspect-ratio: 1 / 1.2;
-      background-color: var(--colors-canvas-parchment); 
-      border-radius: 8px; 
-      display: flex; 
-      flex-direction: column; 
-      align-items: center; 
-      justify-content: center; 
-      cursor: pointer; 
-      transition: background-color 0.2s;
-    }
-    .calendar-day:active { background-color: #e5e5ea; transform: scale(0.96); }
-    .calendar-day.not-month { opacity: 0.3; pointer-events: none; }
-    .calendar-day.today {
-      background-color: #e8f2fc;
-      border: 1px solid var(--colors-primary-focus);
-    }
-
-    .loading-spinner {
-      border: 3px solid rgba(255,255,255,0.3);
-      border-top: 3px solid white;
-      border-radius: 50%;
-      width: 24px; height: 24px;
-      animation: spin 1s linear infinite;
-    }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-5px); }
-      50% { transform: translateX(5px); }
-      75% { transform: translateX(-5px); }
-    }
-    .animate-shake { animation: shake 0.4s ease-in-out; }
-    .error-state {
-      background-color: var(--colors-error) !important;
-      border-color: var(--colors-error) !important;
-      color: white !important;
-    }
-
-    input, select, button { font-size: 17px !important; letter-spacing: -0.374px; }
-  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>성적 분석 및 성적표 관리 시스템</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+  <script defer src="app.js"></script>
 </head>
-<body class="antialiased">
-
-  <div id="app-container" class="min-h-screen flex flex-col w-full md:max-w-2xl mx-auto bg-[#ffffff] overflow-x-hidden shadow-none md:shadow-xl">
-    
-    <header class="bg-[#272729] text-white px-4 py-12 md:px-8 md:py-16 text-center">
-      <h1 class="text-[34px] md:text-[40px] font-semibold leading-[1.1] tracking-[-0.374px]">Overtime</h1>
-      <p class="text-[#cccccc] text-[17px] md:text-[21px] font-semibold tracking-[0.231px] mt-2">초과근무 기록 시스템</p>
-    </header>
-
-    <div class="px-4 py-8 md:px-6 md:py-10 bg-[#ffffff] border-b border-[#e0e0e0]">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div class="bg-[#ffffff] p-6 rounded-[18px] border border-[#e0e0e0] flex flex-col items-center justify-center">
-          <span class="text-[14px] text-[#86868b] font-semibold mb-1">인정 시간</span>
-          <div class="flex items-baseline gap-1">
-            <span id="sum-approved" class="text-[28px] font-semibold text-[#1d1d1f]">-</span>
-            <span class="text-[17px] text-[#86868b] font-semibold">h</span>
-          </div>
-        </div>
-        <div class="bg-[#ffffff] p-6 rounded-[18px] border border-[#e0e0e0] flex flex-col items-center justify-center">
-          <span class="text-[14px] text-[#86868b] font-semibold mb-1">예상 수당</span>
-          <span id="sum-pay" class="text-[24px] font-semibold text-[#1d1d1f]">₩ -</span>
-        </div>
+<body>
+  <nav class="global-nav" aria-label="전체 탐색">
+    <div class="nav-inner">
+      <a href="#import" class="nav-mark" aria-label="성적 분석 홈">Grade</a>
+      <div class="nav-links">
+        <a href="#import">가져오기</a>
+        <a href="#roster">학생명렬</a>
+        <a href="#analysis">분석결과</a>
+        <a href="#lookup">학생조회</a>
       </div>
-      <div class="mt-6 px-2 flex justify-between items-center">
-        <span class="text-[17px] text-[#86868b]">월간 총 누계</span>
-        <span id="sum-total" class="text-[21px] font-semibold text-[#1d1d1f]">-</span>
+      <button class="button-dark-utility" type="button" data-action="sample">샘플 실행</button>
+    </div>
+  </nav>
+
+  <nav class="sub-nav-frosted" aria-label="성적 분석 단계">
+    <div class="sub-nav-inner">
+      <a href="#import" class="sub-nav-title">성적 분석</a>
+      <div class="sub-nav-actions">
+        <a class="sub-nav-link" href="#roster">명렬</a>
+        <a class="sub-nav-link" href="#analysis">결과</a>
+        <button class="button-primary button-small" type="button" data-action="analyze">분석 시작</button>
       </div>
     </div>
+  </nav>
 
-    <nav class="flex sticky top-0 bg-[#f5f5f7]/90 backdrop-blur-md z-30 border-b border-[#e0e0e0]">
-      <button onclick="switchTab('record')" id="tab-record" class="tab-btn flex-1 py-4 text-[17px] text-[#86868b] border-b-2 border-transparent active transition-colors">기록하기</button>
-      <button onclick="switchTab('view')" id="tab-view" class="tab-btn flex-1 py-4 text-[17px] text-[#86868b] border-b-2 border-transparent transition-colors">현황보기</button>
-    </nav>
+  <main>
+    <section id="import" class="product-tile product-tile-light import-tile">
+      <div class="tile-copy">
+        <p class="eyebrow">NEIS XLS data</p>
+        <h1>성적 분석 및 성적표 관리 시스템</h1>
+        <p class="lead">교과목별 일람표를 불러오고, 학생명렬을 채운 뒤 등급과 통계를 브라우저에서 바로 계산합니다.</p>
+        <div class="cta-row">
+          <label class="button-primary file-cta">
+            성적자료 불러오기
+            <input id="sourceFile" type="file" accept=".xlsx,.xls,.csv,.tsv,.txt,.html,.htm">
+          </label>
+          <button class="button-secondary-pill" type="button" data-action="sample">샘플 실행</button>
+        </div>
+      </div>
 
-    <main class="flex-1 px-4 py-10 md:px-6 pb-36 no-scrollbar bg-[#ffffff]">
-      
-      <div id="content-record" class="space-y-12 animate-in fade-in duration-300">
-        <section>
-          <div class="flex justify-between items-center mb-3 px-1">
-            <label class="text-[17px] font-semibold text-[#1d1d1f]">대상 월 선택</label>
-            <button onclick="showModal('newSheetModal')" class="p-2 -mr-2 text-[15px] text-[#0066cc] font-medium active:bg-blue-50 rounded-lg transition-colors">+ 새 월 추가</button>
-          </div>
-          <div class="relative">
-            <select id="sheet-select" onchange="changeSheet()" class="w-full h-[54px] bg-[#f5f5f7] border border-[#e0e0e0] rounded-[16px] px-4 text-[17px] text-[#1d1d1f] appearance-none focus:outline-none focus:border-[#0071e3] transition-colors cursor-pointer">
-              <option value="">데이터 로딩 중...</option>
-            </select>
-            <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#86868b]">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-            </div>
-          </div>
-        </section>
+      <div class="workbench-grid">
+        <div class="store-utility-card upload-card" id="dropZone">
+          <div class="card-kicker">1단계</div>
+          <h2>파일 구조</h2>
+          <p>5행에는 학급, 6행부터는 A열 번호와 각 학급 점수가 있는 NEIS 교과목별일람표 구조를 읽습니다.</p>
+          <dl class="file-spec">
+            <div><dt>지원</dt><dd>XLSX, XLS, CSV, TSV</dd></div>
+            <div><dt>학급</dt><dd>5행 B열 이후</dd></div>
+            <div><dt>번호</dt><dd>6행 A열 이후</dd></div>
+            <div><dt>점수</dt><dd>번호와 학급이 만나는 셀</dd></div>
+          </dl>
+        </div>
 
-        <section class="bg-[#ffffff] p-6 rounded-[18px] border border-[#e0e0e0] shadow-sm">
-          <div class="flex justify-between items-center mb-5">
-            <label class="text-[19px] font-semibold text-[#1d1d1f] tracking-[0.231px]">방과후 요일 설정</label>
-            <button onclick="saveAfterSchool()" id="btn-save-days" class="bg-[#0066cc] text-white px-5 py-2.5 rounded-full text-[15px] font-normal active:scale-95 transition-transform min-w-[70px]">저장</button>
-          </div>
-          <div id="afterschool-container" class="flex gap-1.5 justify-between"></div>
-        </section>
-
-        <section class="space-y-8">
-          <h3 class="text-[24px] md:text-[28px] font-semibold text-[#1d1d1f] tracking-[0.196px]">근무 상세 기록</h3>
-          
-          <div class="space-y-5">
+        <div class="store-utility-card status-card" aria-live="polite">
+          <div class="card-kicker">현재 상태</div>
+          <div class="status-stack">
             <div>
-              <label class="block text-[15px] font-semibold text-[#86868b] mb-2 pl-1">날짜 선택</label>
-              <input type="date" id="date-input" onchange="loadDateDetail()" class="w-full h-[54px] bg-[#f5f5f7] border border-[#e0e0e0] rounded-[16px] px-4 text-[17px] text-[#1d1d1f] focus:outline-none focus:border-[#0071e3] transition-colors">
+              <span class="metric-label">불러온 학생</span>
+              <strong id="loadedCount">0명</strong>
             </div>
-
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-[15px] font-semibold text-[#86868b] mb-2 pl-1">시작 시간</label>
-                <input type="time" id="start-time" class="w-full h-[54px] bg-[#f5f5f7] border border-[#e0e0e0] rounded-[16px] px-3 text-[17px] text-[#1d1d1f] focus:outline-none focus:border-[#0071e3] transition-colors text-center">
-              </div>
-              <div>
-                <label class="block text-[15px] font-semibold text-[#86868b] mb-2 pl-1">종료 시간</label>
-                <input type="time" id="end-time" class="w-full h-[54px] bg-[#f5f5f7] border border-[#e0e0e0] rounded-[16px] px-3 text-[17px] text-[#1d1d1f] focus:outline-none focus:border-[#0071e3] transition-colors text-center">
-              </div>
+            <div>
+              <span class="metric-label">학급</span>
+              <strong id="classCount">0개</strong>
+            </div>
+            <div>
+              <span class="metric-label">명렬 입력</span>
+              <strong id="nameProgress">0 / 0</strong>
             </div>
           </div>
-          
-          <div id="result-panel" class="bg-[#f5f5f7] rounded-[18px] p-6 space-y-5 hidden border border-[#e0e0e0] animate-in fade-in duration-300">
-            <div class="flex justify-between items-center text-[#1d1d1f]">
-              <div class="flex flex-col gap-1 text-center flex-1">
-                <span class="text-[12px] text-[#86868b] uppercase">아침 초과</span>
-                <span id="res-morning" class="text-[21px] font-semibold">0:00</span>
-              </div>
-              <div class="w-px h-8 bg-[#d2d2d7]"></div>
-              <div class="flex flex-col gap-1 text-center flex-1">
-                <span class="text-[12px] text-[#86868b] uppercase">오후 초과</span>
-                <span id="res-afternoon" class="text-[21px] font-semibold">0:00</span>
-              </div>
-            </div>
-            <div class="pt-5 border-t border-[#d2d2d7] flex justify-between items-center px-2">
-              <span class="text-[15px] font-semibold text-[#86868b]">일일 총합</span>
-              <span id="res-total" class="text-[32px] font-semibold text-[#0066cc]">0:00</span>
-            </div>
-          </div>
-
-          <button onclick="submitOvertime()" id="btn-submit" class="w-full h-[54px] bg-[#0066cc] border border-[#0066cc] text-white font-normal text-[17px] rounded-full flex justify-center items-center gap-2 active:scale-95 transition-all shadow-sm">
-            <span>기록 저장하기</span>
-          </button>
-        </section>
-      </div>
-
-      <div id="content-view" class="hidden animate-in fade-in duration-300">
-        <h3 id="calendar-title" class="text-[28px] md:text-[34px] font-semibold text-[#1d1d1f] mb-8 text-center tracking-[-0.374px]">현황</h3>
-        
-        <div class="grid grid-cols-7 mb-3 text-center text-[12px] md:text-[13px] text-[#86868b] uppercase font-semibold">
-          <div class="text-[#ff3b30]">Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div class="text-[#0066cc]">Sat</div>
+          <p id="statusMessage" class="status-message">성적자료를 불러오면 학생명렬 표가 자동으로 생성됩니다.</p>
         </div>
-        
-        <div id="calendar-body" class="calendar-grid mb-10"></div>
-        
-        <div class="bg-[#f5f5f7] p-5 md:p-8 rounded-[18px] flex justify-around items-center border border-[#e0e0e0]">
-          <div class="flex flex-col items-center gap-1.5">
-            <span class="w-3 h-3 rounded-full bg-[#ff9500]"></span>
-            <span class="text-[12px] text-[#86868b] font-medium">아침</span>
-          </div>
-          <div class="flex flex-col items-center gap-1.5">
-            <span class="w-3 h-3 rounded-full bg-[#0066cc]"></span>
-            <span class="text-[12px] text-[#86868b] font-medium">오후</span>
-          </div>
-          <div class="flex flex-col items-center gap-1.5">
-            <div id="legend-total" class="px-2 py-0.5 rounded-[6px] bg-[#ffffff] border border-[#e0e0e0] font-semibold text-[#1d1d1f] text-[13px]">
-               0:00
+      </div>
+    </section>
+
+    <section id="roster" class="product-tile product-tile-dark">
+      <div class="section-shell">
+        <div class="section-heading on-dark">
+          <p class="eyebrow">Student list</p>
+          <h2>학생명렬</h2>
+          <p>점수가 있는 학급/번호 칸만 이름 입력 대상으로 표시합니다. 엑셀에서 복사한 이름 표를 첫 칸에 붙여넣어도 됩니다.</p>
+        </div>
+
+        <div class="control-strip on-dark">
+          <button class="button-primary" type="button" data-action="check-names">명단 누락 확인</button>
+          <button class="button-secondary-on-dark" type="button" data-action="clear-names">이름 지우기</button>
+        </div>
+
+        <div class="table-shell roster-shell" id="rosterShell">
+          <div class="empty-state">성적자료를 먼저 불러오세요.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="settings" class="product-tile product-tile-parchment settings-tile">
+      <div class="section-shell">
+        <div class="section-heading">
+          <p class="eyebrow">Grade policy</p>
+          <h2>교육과정과 등급 기준</h2>
+          <p>VBA의 기본 누적퍼센트 기준을 그대로 사용합니다. 필요하면 분석 전에 등급별 누적 비율을 조정할 수 있습니다.</p>
+        </div>
+
+        <div class="settings-grid">
+          <div class="store-utility-card">
+            <h3>교육과정</h3>
+            <div class="segmented-control" role="radiogroup" aria-label="교육과정 선택">
+              <button class="segment active" type="button" data-curriculum="2015" aria-pressed="true">2015 개정 9등급</button>
+              <button class="segment" type="button" data-curriculum="2022" aria-pressed="false">2022 개정 5등급</button>
             </div>
-            <span class="text-[12px] text-[#86868b] font-medium">일계</span>
+          </div>
+
+          <div class="store-utility-card">
+            <h3>누적퍼센트</h3>
+            <div id="thresholdGrid" class="threshold-grid"></div>
           </div>
         </div>
       </div>
-    </main>
-  </div>
+    </section>
 
-  <div id="newSheetModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#000000]/50 hidden transition-opacity duration-300 backdrop-blur-sm">
-    <div class="bg-[#ffffff] w-full max-w-sm rounded-[24px] p-6 shadow-2xl animate-in zoom-in-95 duration-200">
-      <h3 class="text-[24px] font-semibold text-[#1d1d1f] mb-2 tracking-[0.196px]">새 월 시트 생성</h3>
-      <p class="text-[15px] text-[#86868b] mb-6">연도와 월을 입력해 주세요. (예: 26-5)</p>
-      
-      <input type="text" id="newSheetName" placeholder="YY-M" class="w-full h-[54px] bg-[#f5f5f7] border border-[#e0e0e0] rounded-[16px] px-4 text-[17px] text-[#1d1d1f] focus:border-[#0071e3] focus:outline-none mb-8 text-center tracking-[1px]">
-      
-      <div class="flex gap-3">
-        <button onclick="hideModal('newSheetModal')" class="flex-1 h-[50px] bg-transparent border border-[#0066cc] text-[#0066cc] font-medium text-[17px] rounded-full active:scale-95 transition-transform">취소</button>
-        <button onclick="confirmCreateSheet()" id="btn-create-sheet" class="flex-1 h-[50px] bg-[#0066cc] border border-[#0066cc] text-white font-medium text-[17px] rounded-full active:scale-95 transition-all shadow-sm">생성</button>
+    <section id="analysis" class="product-tile product-tile-light analysis-tile">
+      <div class="section-shell">
+        <div class="section-heading">
+          <p class="eyebrow">Final analysis</p>
+          <h2>성적분석결과</h2>
+          <p>석차, 중간석차, 백분율, 석차등급, 학급 통계, 등급분포와 등급컷을 한 화면에서 확인합니다.</p>
+        </div>
+
+        <div class="control-strip">
+          <button class="button-primary" type="button" data-action="analyze">분석 시작</button>
+          <button class="button-secondary-pill" type="button" data-action="download-csv">결과 CSV 저장</button>
+        </div>
+
+        <div class="metrics-grid" id="metricsGrid">
+          <div class="store-utility-card metric-card"><span>응시인원</span><strong>0명</strong></div>
+          <div class="store-utility-card metric-card"><span>전체평균</span><strong>-</strong></div>
+          <div class="store-utility-card metric-card"><span>최고점</span><strong>-</strong></div>
+          <div class="store-utility-card metric-card"><span>최저점</span><strong>-</strong></div>
+        </div>
+
+        <div class="analysis-grid">
+          <div class="store-utility-card wide-card">
+            <div class="card-header">
+              <h3>전체 결과</h3>
+              <span id="resultCountLabel">0건</span>
+            </div>
+            <div class="table-shell" id="resultsShell">
+              <div class="empty-state">분석을 시작하면 결과가 표시됩니다.</div>
+            </div>
+          </div>
+
+          <div class="store-utility-card">
+            <div class="card-header">
+              <h3>히스토그램</h3>
+              <label class="bin-control">계급
+                <input id="binWidth" type="number" min="1" max="100" step="1" value="10">
+              </label>
+            </div>
+            <div id="histogram" class="histogram">
+              <div class="empty-state">점수 분포가 여기에 그려집니다.</div>
+            </div>
+          </div>
+
+          <div class="store-utility-card">
+            <h3>학급 통계</h3>
+            <div class="table-shell compact" id="classStatsShell"></div>
+          </div>
+
+          <div class="store-utility-card">
+            <h3>등급 분포</h3>
+            <div class="table-shell compact" id="gradeDistributionShell"></div>
+          </div>
+
+          <div class="store-utility-card">
+            <h3>등급컷</h3>
+            <div class="table-shell compact" id="cutoffShell"></div>
+          </div>
+        </div>
       </div>
+    </section>
+
+    <section id="lookup" class="product-tile product-tile-dark-2 lookup-tile">
+      <div class="section-shell">
+        <div class="section-heading on-dark">
+          <p class="eyebrow">Student report</p>
+          <h2>학생 개별 조회</h2>
+          <p>학급과 번호로 학생을 찾고, 현재 학생 또는 전체 학생 성적표를 브라우저 PDF로 저장합니다.</p>
+        </div>
+
+        <div class="lookup-grid">
+          <form class="store-utility-card lookup-form" id="lookupForm">
+            <label>학급
+              <input id="searchClass" class="field-control" type="number" min="1" inputmode="numeric" placeholder="1">
+            </label>
+            <label>번호
+              <input id="searchNo" class="field-control" type="number" min="1" inputmode="numeric" placeholder="1">
+            </label>
+            <div class="lookup-actions">
+              <button class="button-primary" type="submit">조회하기</button>
+              <button class="button-secondary-pill" type="button" data-action="prev-student">이전</button>
+              <button class="button-secondary-pill" type="button" data-action="next-student">다음</button>
+            </div>
+            <div class="lookup-actions">
+              <button class="button-secondary-pill" type="button" data-action="print-current">현재 PDF</button>
+              <button class="button-secondary-pill" type="button" data-action="print-all">전체 PDF</button>
+            </div>
+          </form>
+
+          <article class="report-card" id="reportCard">
+            <div class="report-empty">분석 후 학생을 조회하면 성적표가 표시됩니다.</div>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+      <p>원본 VBA: GradeAnalysisSystem_CP949.bas의 가져오기, 명렬 확인, 등급 분석, 히스토그램, 학생 조회, PDF 출력 흐름을 웹으로 옮겼습니다.</p>
+      <p class="fine-print">파일과 성적 데이터는 브라우저 안에서 처리되며 서버로 업로드되지 않습니다. XLSX/XLS 파일은 SheetJS가 로드된 환경에서 해석됩니다.</p>
     </div>
-  </div>
+  </footer>
 
-  <script>
-    // ★ 주의: Apps Script 배포 후 발급받은 '웹 앱 URL'을 아래에 붙여넣으세요.
-    const API_URL = "/api/overtime";
-
-    let currentAfterSchoolState = [];
-    let currentSheetRecords = {};
-    let allSheetData = {};
-
-    window.onload = function() { 
-      loadAppData(); 
-    };
-
-    /**
-     * Vercel 등 외부 환경에서 Apps Script와 통신하기 위한 Fetch 함수
-     */
-    async function fetchAPI(action, payload = {}) {
-      try {
-        const response = await fetch(API_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ action: action, ...payload })
-        });
-        const data = await response.json();
-        if (data.error) throw new Error(data.error);
-        return data;
-      } catch (error) {
-        console.error("API 통신 오류:", error);
-        return { error: error.message || "네트워크 오류가 발생했습니다." };
-      }
-    }
-
-    function switchTab(tab) {
-      const tabs = { record: 'tab-record', view: 'tab-view' };
-      const contents = { record: 'content-record', view: 'content-view' };
-      Object.values(tabs).forEach(id => document.getElementById(id).classList.remove('active'));
-      Object.values(contents).forEach(id => document.getElementById(id).classList.add('hidden'));
-      document.getElementById(tabs[tab]).classList.add('active');
-      document.getElementById(contents[tab]).classList.remove('hidden');
-      if (tab === 'view') renderCalendar();
-    }
-
-    async function loadAppData() {
-      const res = await fetchAPI('getInitialAppData');
-      if (res.error) return alert("데이터 로딩 실패: " + res.error);
-      allSheetData = res;
-      updateSheetSelect(res);
-      updatePage(res);
-    }
-
-    async function changeSheet() {
-      const name = document.getElementById('sheet-select').value;
-      const res = await fetchAPI('getSheetData', { sheetName: name });
-      if (res.error) return alert("시트 데이터 로딩 실패: " + res.error);
-      
-      allSheetData.summary = res.summary;
-      allSheetData.dates = res.dates;
-      allSheetData.records = res.records;
-      allSheetData.afterSchool = res.afterSchool;
-      updatePage(allSheetData);
-    }
-
-    function updateSheetSelect(res) {
-      const sheetSelect = document.getElementById('sheet-select');
-      sheetSelect.innerHTML = '';
-      res.sheetNames.forEach(name => {
-        const opt = document.createElement('option');
-        opt.value = name; opt.innerText = name + ' 시트';
-        if(name === res.currentSheet) opt.selected = true;
-        sheetSelect.appendChild(opt);
-      });
-    }
-
-    function updatePage(data) {
-      updateSummary(data.summary);
-      currentSheetRecords = data.records || {};
-      
-      const sheetName = document.getElementById('sheet-select').value;
-      const now = new Date();
-      const parts = sheetName.split('-');
-      
-      let defaultY = now.getFullYear();
-      let defaultM = now.getMonth() + 1;
-      let defaultD = now.getDate();
-
-      if (parts.length === 2) {
-          defaultY = parseInt(parts[0]) + 2000;
-          defaultM = parseInt(parts[1]);
-          if (defaultY !== now.getFullYear() || defaultM !== now.getMonth() + 1) {
-              defaultD = 1; 
-          }
-      }
-      
-      const dateStr = `${defaultY}-${defaultM.toString().padStart(2, '0')}-${defaultD.toString().padStart(2, '0')}`;
-      document.getElementById('date-input').value = dateStr;
-      
-      loadDateDetail();
-      renderAfterSchoolChips(data.afterSchool);
-    }
-
-    function updateSummary(summary) {
-      if (!summary) return;
-      document.getElementById('sum-total').innerText = summary.totalHours || '0:00';
-      document.getElementById('sum-approved').innerText = summary.approvedHours || '0';
-      document.getElementById('sum-pay').innerText = summary.totalPay ? '₩ ' + summary.totalPay : '₩ 0';
-    }
-
-    function renderAfterSchoolChips(afterSchool) {
-      const container = document.getElementById('afterschool-container');
-      container.innerHTML = '';
-      currentAfterSchoolState = afterSchool.map(d => d.isSelected);
-      afterSchool.forEach((item, index) => {
-        const chip = document.createElement('button');
-        chip.innerText = item.day;
-        const updateClass = (selected) => {
-          chip.className = "flex-1 h-[44px] rounded-[10px] text-[15px] font-medium transition-colors " + 
-            (selected 
-              ? "bg-[#1d1d1f] text-white" 
-              : "bg-[#f5f5f7] border border-[#e0e0e0] text-[#1d1d1f] hover:bg-[#e0e0e0]");
-        };
-        updateClass(currentAfterSchoolState[index]);
-        chip.onclick = () => {
-          currentAfterSchoolState[index] = !currentAfterSchoolState[index];
-          updateClass(currentAfterSchoolState[index]);
-        };
-        container.appendChild(chip);
-      });
-    }
-
-    function renderCalendar() {
-      const sheetName = document.getElementById('sheet-select').value;
-      const calendarBody = document.getElementById('calendar-body');
-      if(!sheetName || !sheetName.includes('-')) return;
-      const parts = sheetName.split('-');
-      const year = parseInt(parts[0]) + 2000;
-      const month = parseInt(parts[1]);
-      document.getElementById('calendar-title').innerText = `${year}년 ${month}월`;
-      calendarBody.innerHTML = '';
-      
-      const firstDay = new Date(year, month - 1, 1).getDay();
-      const lastDate = new Date(year, month, 0).getDate();
-      const prevMonthLastDate = new Date(year, month - 1, 0).getDate();
-      
-      for (let i = firstDay - 1; i >= 0; i--) {
-        const div = document.createElement('div');
-        div.className = 'calendar-day not-month';
-        div.innerHTML = `<span class="text-[14px]">${prevMonthLastDate - i}</span>`;
-        calendarBody.appendChild(div);
-      }
-      
-      const now = new Date();
-      for (let day = 1; day <= lastDate; day++) {
-        const dateKey = `${month}월${day}일`;
-        const record = currentSheetRecords[dateKey];
-        const dayOfWeek = new Date(year, month - 1, day).getDay();
-        const div = document.createElement('div');
-        div.className = 'calendar-day';
-        
-        if (now.getFullYear() === year && now.getMonth() + 1 === month && now.getDate() === day) {
-           div.classList.add('today');
-        }
-        
-        let dateNumClass = "text-[16px] md:text-[17px] font-semibold ";
-        if (dayOfWeek === 0) dateNumClass += "text-[#ff3b30]";
-        else if (dayOfWeek === 6) dateNumClass += "text-[#0066cc]";
-        else dateNumClass += "text-[#1d1d1f]";
-        
-        let contentHtml = `<span class="${dateNumClass}">${day}</span>`;
-        if (record) {
-          contentHtml += `<div class="flex gap-1 mt-1.5">`;
-          if (record.morningExtra && record.morningExtra !== '0:00') contentHtml += `<span class="w-1.5 h-1.5 rounded-full bg-[#ff9500]"></span>`;
-          if (record.afternoonExtra && record.afternoonExtra !== '0:00') contentHtml += `<span class="w-1.5 h-1.5 rounded-full bg-[#0066cc]"></span>`;
-          contentHtml += `</div>`;
-          if (record.dailyTotal && record.dailyTotal !== '0:00') {
-            contentHtml += `<span class="text-[11px] font-bold text-[#1d1d1f] mt-1">${record.dailyTotal}</span>`;
-          }
-        }
-        div.innerHTML = contentHtml;
-        
-        div.onclick = () => {
-          const y = year;
-          const m = month.toString().padStart(2, '0');
-          const d = day.toString().padStart(2, '0');
-          document.getElementById('date-input').value = `${y}-${m}-${d}`;
-          switchTab('record');
-          loadDateDetail();
-        };
-        calendarBody.appendChild(div);
-      }
-    }
-
-    function setNowAsDefault() {
-      const now = new Date();
-      const hh = now.getHours().toString().padStart(2, '0');
-      const mm = now.getMinutes().toString().padStart(2, '0');
-      if (now.getHours() < 12) { document.getElementById('start-time').value = `${hh}:${mm}`; document.getElementById('end-time').value = ""; }
-      else { document.getElementById('start-time').value = ""; document.getElementById('end-time').value = `${hh}:${mm}`; }
-    }
-
-    function formatTimeInput(val) {
-      if (!val || val === "") return "";
-      if (val.includes(':')) {
-        const parts = val.split(':');
-        return parts[0].padStart(2, '0') + ":" + parts[1].padStart(2, '0');
-      }
-      return val;
-    }
-
-    function parseDateInput(val) {
-      if (!val) return "";
-      const parts = val.split('-');
-      if (parts.length !== 3) return "";
-      return `${parseInt(parts[1], 10)}월${parseInt(parts[2], 10)}일`;
-    }
-
-    function loadDateDetail() {
-      const dateVal = document.getElementById('date-input').value;
-      if (!dateVal) { setNowAsDefault(); return; }
-      
-      const startInput = document.getElementById('start-time');
-      const endInput = document.getElementById('end-time');
-
-      const normalizedDate = parseDateInput(dateVal);
-      const detail = currentSheetRecords[normalizedDate];
-
-      const now = new Date();
-      const isAM = now.getHours() < 12;
-      const currentT = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
-
-      if (detail) {
-        startInput.value = formatTimeInput(detail.startTime) || (isAM ? currentT : "");
-        endInput.value = formatTimeInput(detail.endTime) || (!isAM ? currentT : "");
-        
-        if (detail.startTime || detail.endTime) {
-          showResult(detail);
-        } else {
-          document.getElementById('result-panel').classList.add('hidden');
-        }
-      } else {
-        startInput.value = isAM ? currentT : "";
-        endInput.value = !isAM ? currentT : "";
-        document.getElementById('result-panel').classList.add('hidden');
-      }
-    }
-
-    function showResult(res) {
-      document.getElementById('result-panel').classList.remove('hidden');
-      document.getElementById('res-morning').innerText = res.morningExtra || '0:00';
-      document.getElementById('res-afternoon').innerText = res.afternoonExtra || '0:00';
-      document.getElementById('res-total').innerText = res.dailyTotal || '0:00';
-    }
-
-    function showButtonError(btn, originalText) {
-      btn.disabled = false;
-      btn.innerHTML = `<span>오류 발생</span>`;
-      btn.classList.add('error-state', 'animate-shake');
-      setTimeout(() => {
-        btn.classList.remove('error-state', 'animate-shake');
-        btn.innerHTML = `<span>${originalText}</span>`;
-      }, 1500);
-    }
-
-    async function submitOvertime() {
-      const name = document.getElementById('sheet-select').value;
-      const dateVal = document.getElementById('date-input').value;
-      const start = document.getElementById('start-time').value;
-      const end = document.getElementById('end-time').value;
-      const btn = document.getElementById('btn-submit');
-      
-      if (!dateVal) return;
-      
-      const dateText = parseDateInput(dateVal);
-      
-      const originalHtml = btn.innerHTML;
-      btn.disabled = true;
-      btn.innerHTML = '<div class="loading-spinner"></div>';
-      btn.classList.remove('error-state', 'animate-shake');
-      
-      const res = await fetchAPI('saveOvertime', {
-        sheetName: name, dateText: dateText, startTime: start, endTime: end
-      });
-
-      if (res && res.success) {
-        btn.disabled = false; 
-        btn.innerHTML = originalHtml;
-        showResult(res); 
-        updateSummary(res.summary); 
-        currentSheetRecords = res.records; 
-      } else {
-        showButtonError(btn, "기록 저장하기");
-      }
-    }
-
-    async function saveAfterSchool() {
-      const name = document.getElementById('sheet-select').value;
-      const btn = document.getElementById('btn-save-days');
-      
-      btn.disabled = true;
-      const originalText = btn.innerText;
-      btn.innerText = "...";
-      btn.classList.remove('error-state', 'animate-shake');
-      
-      const res = await fetchAPI('saveAfterSchoolSettings', {
-        sheetName: name, settings: currentAfterSchoolState
-      });
-
-      if (res && res.success) {
-        btn.disabled = false;
-        btn.innerText = "저장";
-        updateSummary(res.summary); 
-        currentSheetRecords = res.records; 
-      } else {
-        showButtonError(btn, originalText);
-      }
-    }
-
-    function showModal(id) { document.getElementById(id).classList.remove('hidden'); }
-    function hideModal(id) { document.getElementById(id).classList.add('hidden'); }
-    
-    async function confirmCreateSheet() {
-      const name = document.getElementById('newSheetName').value.trim();
-      if (!name) return;
-      
-      const btn = document.getElementById('btn-create-sheet');
-      btn.disabled = true;
-      const originalText = btn.innerText;
-      btn.innerHTML = '<div class="loading-spinner" style="width: 20px; height: 20px; border-width: 2px;"></div>';
-      btn.classList.remove('error-state', 'animate-shake');
-
-      const res = await fetchAPI('createNewMonthSheet', { targetName: name });
-
-      if (res && res.success) {
-        hideModal('newSheetModal');
-        btn.disabled = false;
-        btn.innerText = originalText;
-        loadAppData();
-      } else {
-        showButtonError(btn, originalText);
-      }
-    }
-  </script>
+  <div id="printRoot" aria-hidden="true"></div>
 </body>
 </html>
