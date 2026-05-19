@@ -173,8 +173,12 @@
       </div>
 
       <form id="login-panel" class="auth-panel active space-y-3">
-        <input id="login-username" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="text" autocomplete="username" placeholder="아이디">
-        <input id="login-password" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="password" autocomplete="current-password" placeholder="비밀번호">
+        <input id="login-username" name="username" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="text" autocomplete="username" placeholder="아이디">
+        <input id="login-password" name="password" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="password" autocomplete="current-password" placeholder="비밀번호">
+        <label class="flex h-11 items-center gap-2 rounded-lg bg-[#f5f5f7] px-4 text-sm font-semibold text-[#6e6e73]">
+          <input id="remember-login" class="h-4 w-4 accent-[#0066cc]" type="checkbox">
+          아이디 저장 및 자동 로그인
+        </label>
         <button class="flex h-12 w-full items-center justify-center rounded-full bg-[#0066cc] font-semibold text-white active:scale-[0.98]" type="submit">로그인</button>
       </form>
 
@@ -355,9 +359,10 @@
     const API_URL = '/api/overtime';
     const TOKEN_KEY = 'overtime-app-token';
     const USER_KEY = 'overtime-app-user';
+    const REMEMBERED_USERNAME_KEY = 'overtime-app-remembered-username';
     const REASONS = ['회의', '생활지도', '방과후', '행사', '상담', '기타'];
 
-    let authToken = sessionStorage.getItem(TOKEN_KEY) || '';
+    let authToken = readStoredValue(TOKEN_KEY);
     let authUser = readStoredUser();
     let currentAfterSchoolState = [];
     let currentSheetRecords = {};
@@ -380,6 +385,7 @@
       $('#sheet-select').addEventListener('change', changeSheet);
       $('#date-input').addEventListener('change', loadDateDetail);
       renderReasonButtons();
+      restoreLoginPreferences(false);
       registerServiceWorker();
 
       if (authToken) {
@@ -392,10 +398,59 @@
 
     function readStoredUser() {
       try {
-        return JSON.parse(sessionStorage.getItem(USER_KEY) || 'null');
+        return JSON.parse(readStoredValue(USER_KEY) || 'null');
       } catch {
         return null;
       }
+    }
+
+    function readStoredValue(key) {
+      return readLocalValue(key) || readSessionValue(key);
+    }
+
+    function readLocalValue(key) {
+      try {
+        return localStorage.getItem(key) || '';
+      } catch {
+        return '';
+      }
+    }
+
+    function readSessionValue(key) {
+      try {
+        return sessionStorage.getItem(key) || '';
+      } catch {
+        return '';
+      }
+    }
+
+    function writeStoredValue(key, value, persistent) {
+      try {
+        sessionStorage.setItem(key, value);
+      } catch {}
+      try {
+        if (persistent) localStorage.setItem(key, value);
+        else localStorage.removeItem(key);
+      } catch {}
+    }
+
+    function removeStoredValue(key) {
+      try {
+        sessionStorage.removeItem(key);
+      } catch {}
+      try {
+        localStorage.removeItem(key);
+      } catch {}
+    }
+
+    function hasPersistentLogin() {
+      return readLocalValue(TOKEN_KEY) === authToken;
+    }
+
+    function restoreLoginPreferences(clearWhenMissing) {
+      const rememberedUsername = readLocalValue(REMEMBERED_USERNAME_KEY);
+      if (rememberedUsername || clearWhenMissing) $('#login-username').value = rememberedUsername;
+      $('#remember-login').checked = Boolean(rememberedUsername);
     }
 
     function switchAuthTab(name) {
@@ -412,7 +467,7 @@
         password: $('#login-password').value,
       }, { publicRequest: true });
       if (result.error) return setAuthMessage(result.error);
-      acceptAuth(result);
+      acceptAuth(result, $('#remember-login').checked);
       showToast('로그인했습니다.');
     }
 
@@ -454,11 +509,16 @@
       showToast('비밀번호를 재설정했습니다.');
     }
 
-    function acceptAuth(result) {
+    function acceptAuth(result, persistent = false) {
       authToken = result.token;
       authUser = result.user;
-      sessionStorage.setItem(TOKEN_KEY, authToken);
-      sessionStorage.setItem(USER_KEY, JSON.stringify(authUser));
+      writeStoredValue(TOKEN_KEY, authToken, persistent);
+      writeStoredValue(USER_KEY, JSON.stringify(authUser), persistent);
+      try {
+        if (persistent) localStorage.setItem(REMEMBERED_USERNAME_KEY, authUser.username);
+        else localStorage.removeItem(REMEMBERED_USERNAME_KEY);
+      } catch {}
+      $('#login-password').value = '';
       hideAuth();
       applyAppData(result);
     }
@@ -466,9 +526,11 @@
     function logout() {
       authToken = '';
       authUser = null;
-      sessionStorage.removeItem(TOKEN_KEY);
-      sessionStorage.removeItem(USER_KEY);
+      removeStoredValue(TOKEN_KEY);
+      removeStoredValue(USER_KEY);
       showAuth();
+      restoreLoginPreferences(true);
+      $('#login-password').value = '';
     }
 
     function showAuth() {
@@ -515,7 +577,7 @@
     function applyAppData(data) {
       if (data.user) {
         authUser = data.user;
-        sessionStorage.setItem(USER_KEY, JSON.stringify(authUser));
+        writeStoredValue(USER_KEY, JSON.stringify(authUser), hasPersistentLogin());
       }
       allSheetData = data;
       currentHistory = data.history || [];
