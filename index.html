@@ -3,70 +3,102 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1d1d1f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Overtime">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" href="/icon.svg" type="image/svg+xml">
   <script src="https://cdn.tailwindcss.com"></script>
   <title>초과근무 관리 시스템</title>
   <style>
     :root {
-      --colors-primary: #0066cc;
-      --colors-primary-focus: #0071e3;
-      --colors-canvas: #ffffff;
-      --colors-canvas-parchment: #f5f5f7;
-      --colors-ink: #1d1d1f;
-      --colors-error: #ff3b30;
+      --primary: #0066cc;
+      --primary-focus: #0071e3;
+      --canvas: #ffffff;
+      --parchment: #f5f5f7;
+      --line: #e0e0e0;
+      --ink: #1d1d1f;
+      --muted: #6e6e73;
+      --error: #ff3b30;
     }
 
-    body { 
-      -webkit-tap-highlight-color: transparent;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: var(--colors-canvas-parchment);
-      color: var(--colors-ink);
+    * {
+      box-sizing: border-box;
+      letter-spacing: 0;
+    }
+
+    body {
       margin: 0;
-      padding: 0;
-      font-size: 17px;
-      line-height: 1.47;
-      letter-spacing: -0.374px;
+      background: var(--parchment);
+      color: var(--ink);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.5;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-    .tab-btn.active { 
-      color: var(--colors-primary); 
-      border-bottom: 2px solid var(--colors-primary); 
-      font-weight: 600; 
+    input, select, textarea, button {
+      font: inherit;
     }
 
-    .calendar-grid { 
-      display: grid; 
-      grid-template-columns: repeat(7, 1fr); 
-      gap: 6px; 
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
     }
-    .calendar-day { 
-      aspect-ratio: 1 / 1.2;
-      background-color: var(--colors-canvas-parchment); 
-      border-radius: 8px; 
-      display: flex; 
-      flex-direction: column; 
-      align-items: center; 
-      justify-content: center; 
-      cursor: pointer; 
-      transition: background-color 0.2s;
+
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      font-weight: 700;
     }
-    .calendar-day:active { background-color: #e5e5ea; transform: scale(0.96); }
-    .calendar-day.not-month { opacity: 0.3; pointer-events: none; }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .calendar-day {
+      min-height: 76px;
+      background: var(--parchment);
+      border: 1px solid transparent;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.16s ease, transform 0.16s ease;
+    }
+
+    .calendar-day:active {
+      transform: scale(0.97);
+      background: #e5e5ea;
+    }
+
+    .calendar-day.not-month {
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
     .calendar-day.today {
-      background-color: #e8f2fc;
-      border: 1px solid var(--colors-primary-focus);
+      background: #e8f2fc;
+      border-color: var(--primary-focus);
     }
 
     .loading-spinner {
-      border: 3px solid rgba(255,255,255,0.3);
-      border-top: 3px solid white;
-      border-radius: 50%;
-      width: 24px; height: 24px;
-      animation: spin 1s linear infinite;
+      border: 3px solid rgba(255, 255, 255, 0.35);
+      border-top: 3px solid #ffffff;
+      border-radius: 999px;
+      width: 22px;
+      height: 22px;
+      animation: spin 0.9s linear infinite;
     }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
 
     @keyframes shake {
       0%, 100% { transform: translateX(0); }
@@ -74,504 +106,873 @@
       50% { transform: translateX(5px); }
       75% { transform: translateX(-5px); }
     }
-    .animate-shake { animation: shake 0.4s ease-in-out; }
-    .error-state {
-      background-color: var(--colors-error) !important;
-      border-color: var(--colors-error) !important;
-      color: white !important;
+
+    .animate-shake {
+      animation: shake 0.36s ease-in-out;
     }
 
-    input, select, button { font-size: 17px !important; letter-spacing: -0.374px; }
+    .error-state {
+      background: var(--error) !important;
+      border-color: var(--error) !important;
+      color: #ffffff !important;
+    }
+
+    #print-root {
+      display: none;
+    }
+
+    @media print {
+      body.printing #app-container,
+      body.printing #lock-screen,
+      body.printing #toast {
+        display: none !important;
+      }
+
+      body.printing #print-root {
+        display: block !important;
+        padding: 20px;
+        color: #000000;
+        font-size: 12px;
+      }
+
+      body.printing table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      body.printing th,
+      body.printing td {
+        border: 1px solid #9ca3af;
+        padding: 6px;
+        text-align: left;
+      }
+
+      body.printing h1,
+      body.printing h2 {
+        margin: 0 0 12px;
+      }
+    }
   </style>
 </head>
 <body class="antialiased">
+  <div id="lock-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-[#1d1d1f] px-5">
+    <form id="pin-form" class="w-full max-w-sm rounded-lg bg-white p-6 shadow-2xl">
+      <div class="mb-6 text-center">
+        <p class="text-sm font-semibold uppercase text-[#0066cc]">Overtime</p>
+        <h1 class="mt-1 text-2xl font-bold text-[#1d1d1f]">비밀번호 입력</h1>
+      </div>
+      <label class="block text-sm font-semibold text-[#6e6e73]" for="pin-input">비밀번호</label>
+      <input id="pin-input" class="mt-2 h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 text-center text-xl font-semibold outline-none focus:border-[#0071e3]" type="password" inputmode="numeric" autocomplete="current-password" placeholder="4자리">
+      <p id="pin-error" class="mt-3 min-h-5 text-center text-sm font-medium text-[#ff3b30]"></p>
+      <button id="pin-submit" class="mt-4 flex h-12 w-full items-center justify-center rounded-full bg-[#0066cc] text-white active:scale-[0.98]" type="submit">
+        열기
+      </button>
+    </form>
+  </div>
 
-  <div id="app-container" class="min-h-screen flex flex-col w-full md:max-w-2xl mx-auto bg-[#ffffff] overflow-x-hidden shadow-none md:shadow-xl">
-    
-    <header class="bg-[#272729] text-white px-4 py-12 md:px-8 md:py-16 text-center">
-      <h1 class="text-[34px] md:text-[40px] font-semibold leading-[1.1] tracking-[-0.374px]">Overtime</h1>
-      <p class="text-[#cccccc] text-[17px] md:text-[21px] font-semibold tracking-[0.231px] mt-2">초과근무 기록 시스템</p>
+  <div id="app-container" class="hidden min-h-screen w-full bg-white md:mx-auto md:max-w-2xl md:shadow-xl">
+    <header class="bg-[#272729] px-4 py-8 text-white md:px-8">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <h1 class="text-4xl font-bold leading-tight">Overtime</h1>
+          <p class="mt-2 text-base font-semibold text-[#cccccc]">초과근무 기록 시스템</p>
+        </div>
+        <button id="logout-btn" class="rounded-full border border-white/30 px-3 py-2 text-sm text-white active:scale-95" type="button">잠금</button>
+      </div>
     </header>
 
-    <div class="px-4 py-8 md:px-6 md:py-10 bg-[#ffffff] border-b border-[#e0e0e0]">
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div class="bg-[#ffffff] p-6 rounded-[18px] border border-[#e0e0e0] flex flex-col items-center justify-center">
-          <span class="text-[14px] text-[#86868b] font-semibold mb-1">인정 시간</span>
-          <div class="flex items-baseline gap-1">
-            <span id="sum-approved" class="text-[28px] font-semibold text-[#1d1d1f]">-</span>
-            <span class="text-[17px] text-[#86868b] font-semibold">h</span>
+    <section class="border-b border-[#e0e0e0] bg-white px-4 py-6 md:px-6">
+      <div class="grid grid-cols-2 gap-3">
+        <div class="rounded-lg border border-[#e0e0e0] bg-white p-5 text-center">
+          <span class="text-sm font-semibold text-[#6e6e73]">인정 시간</span>
+          <div class="mt-1 flex items-baseline justify-center gap-1">
+            <span id="sum-approved" class="text-3xl font-bold">-</span>
+            <span class="text-sm font-semibold text-[#6e6e73]">h</span>
           </div>
         </div>
-        <div class="bg-[#ffffff] p-6 rounded-[18px] border border-[#e0e0e0] flex flex-col items-center justify-center">
-          <span class="text-[14px] text-[#86868b] font-semibold mb-1">예상 수당</span>
-          <span id="sum-pay" class="text-[24px] font-semibold text-[#1d1d1f]">₩ -</span>
+        <div class="rounded-lg border border-[#e0e0e0] bg-white p-5 text-center">
+          <span class="text-sm font-semibold text-[#6e6e73]">예상 수당</span>
+          <span id="sum-pay" class="mt-1 block text-2xl font-bold">₩ -</span>
         </div>
       </div>
-      <div class="mt-6 px-2 flex justify-between items-center">
-        <span class="text-[17px] text-[#86868b]">월간 총 누계</span>
-        <span id="sum-total" class="text-[21px] font-semibold text-[#1d1d1f]">-</span>
+      <div class="mt-5 flex items-center justify-between px-1">
+        <span class="text-[#6e6e73]">월간 총 누계</span>
+        <span id="sum-total" class="text-xl font-bold">-</span>
       </div>
-    </div>
+    </section>
 
-    <nav class="flex sticky top-0 bg-[#f5f5f7]/90 backdrop-blur-md z-30 border-b border-[#e0e0e0]">
-      <button onclick="switchTab('record')" id="tab-record" class="tab-btn flex-1 py-4 text-[17px] text-[#86868b] border-b-2 border-transparent active transition-colors">기록하기</button>
-      <button onclick="switchTab('view')" id="tab-view" class="tab-btn flex-1 py-4 text-[17px] text-[#86868b] border-b-2 border-transparent transition-colors">현황보기</button>
+    <nav class="sticky top-0 z-30 flex border-b border-[#e0e0e0] bg-[#f5f5f7]/95 backdrop-blur">
+      <button id="tab-record" class="tab-btn active flex-1 border-b-2 border-transparent py-4 text-[#6e6e73]" type="button" data-tab="record">기록하기</button>
+      <button id="tab-view" class="tab-btn flex-1 border-b-2 border-transparent py-4 text-[#6e6e73]" type="button" data-tab="view">현황보기</button>
     </nav>
 
-    <main class="flex-1 px-4 py-10 md:px-6 pb-36 no-scrollbar bg-[#ffffff]">
-      
-      <div id="content-record" class="space-y-12 animate-in fade-in duration-300">
+    <main class="bg-white px-4 py-8 pb-28 md:px-6">
+      <div id="content-record" class="space-y-8">
         <section>
-          <div class="flex justify-between items-center mb-3 px-1">
-            <label class="text-[17px] font-semibold text-[#1d1d1f]">대상 월 선택</label>
-            <button onclick="showModal('newSheetModal')" class="p-2 -mr-2 text-[15px] text-[#0066cc] font-medium active:bg-blue-50 rounded-lg transition-colors">+ 새 월 추가</button>
+          <div class="mb-3 flex items-center justify-between gap-3">
+            <label class="font-bold" for="sheet-select">대상 월</label>
+            <button class="rounded-full px-3 py-2 text-sm font-semibold text-[#0066cc] active:bg-blue-50" type="button" data-action="open-new-sheet">+ 새 월</button>
           </div>
-          <div class="relative">
-            <select id="sheet-select" onchange="changeSheet()" class="w-full h-[54px] bg-[#f5f5f7] border border-[#e0e0e0] rounded-[16px] px-4 text-[17px] text-[#1d1d1f] appearance-none focus:outline-none focus:border-[#0071e3] transition-colors cursor-pointer">
-              <option value="">데이터 로딩 중...</option>
-            </select>
-            <div class="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#86868b]">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-            </div>
-          </div>
+          <select id="sheet-select" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]">
+            <option value="">데이터 로딩 중...</option>
+          </select>
         </section>
 
-        <section class="bg-[#ffffff] p-6 rounded-[18px] border border-[#e0e0e0] shadow-sm">
-          <div class="flex justify-between items-center mb-5">
-            <label class="text-[19px] font-semibold text-[#1d1d1f] tracking-[0.231px]">방과후 요일 설정</label>
-            <button onclick="saveAfterSchool()" id="btn-save-days" class="bg-[#0066cc] text-white px-5 py-2.5 rounded-full text-[15px] font-normal active:scale-95 transition-transform min-w-[70px]">저장</button>
+        <section class="rounded-lg border border-[#e0e0e0] bg-white p-5">
+          <div class="mb-4 flex items-center justify-between gap-3">
+            <h2 class="text-lg font-bold">방과후 요일</h2>
+            <button id="btn-save-days" class="rounded-full bg-[#0066cc] px-5 py-2 text-sm font-semibold text-white active:scale-95" type="button" data-action="save-days">저장</button>
           </div>
-          <div id="afterschool-container" class="flex gap-1.5 justify-between"></div>
+          <div id="afterschool-container" class="grid grid-cols-7 gap-1.5"></div>
         </section>
 
-        <section class="space-y-8">
-          <h3 class="text-[24px] md:text-[28px] font-semibold text-[#1d1d1f] tracking-[0.196px]">근무 상세 기록</h3>
-          
-          <div class="space-y-5">
-            <div>
-              <label class="block text-[15px] font-semibold text-[#86868b] mb-2 pl-1">날짜 선택</label>
-              <input type="date" id="date-input" onchange="loadDateDetail()" class="w-full h-[54px] bg-[#f5f5f7] border border-[#e0e0e0] rounded-[16px] px-4 text-[17px] text-[#1d1d1f] focus:outline-none focus:border-[#0071e3] transition-colors">
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-[15px] font-semibold text-[#86868b] mb-2 pl-1">시작 시간</label>
-                <input type="time" id="start-time" class="w-full h-[54px] bg-[#f5f5f7] border border-[#e0e0e0] rounded-[16px] px-3 text-[17px] text-[#1d1d1f] focus:outline-none focus:border-[#0071e3] transition-colors text-center">
-              </div>
-              <div>
-                <label class="block text-[15px] font-semibold text-[#86868b] mb-2 pl-1">종료 시간</label>
-                <input type="time" id="end-time" class="w-full h-[54px] bg-[#f5f5f7] border border-[#e0e0e0] rounded-[16px] px-3 text-[17px] text-[#1d1d1f] focus:outline-none focus:border-[#0071e3] transition-colors text-center">
-              </div>
-            </div>
-          </div>
-          
-          <div id="result-panel" class="bg-[#f5f5f7] rounded-[18px] p-6 space-y-5 hidden border border-[#e0e0e0] animate-in fade-in duration-300">
-            <div class="flex justify-between items-center text-[#1d1d1f]">
-              <div class="flex flex-col gap-1 text-center flex-1">
-                <span class="text-[12px] text-[#86868b] uppercase">아침 초과</span>
-                <span id="res-morning" class="text-[21px] font-semibold">0:00</span>
-              </div>
-              <div class="w-px h-8 bg-[#d2d2d7]"></div>
-              <div class="flex flex-col gap-1 text-center flex-1">
-                <span class="text-[12px] text-[#86868b] uppercase">오후 초과</span>
-                <span id="res-afternoon" class="text-[21px] font-semibold">0:00</span>
-              </div>
-            </div>
-            <div class="pt-5 border-t border-[#d2d2d7] flex justify-between items-center px-2">
-              <span class="text-[15px] font-semibold text-[#86868b]">일일 총합</span>
-              <span id="res-total" class="text-[32px] font-semibold text-[#0066cc]">0:00</span>
+        <section class="space-y-5">
+          <div class="flex items-center justify-between gap-3">
+            <h2 class="text-2xl font-bold">근무 상세</h2>
+            <div class="flex gap-2">
+              <button class="rounded-full border border-[#0066cc] px-3 py-2 text-sm font-semibold text-[#0066cc] active:scale-95" type="button" data-action="quick-start">지금 시작</button>
+              <button class="rounded-full border border-[#0066cc] px-3 py-2 text-sm font-semibold text-[#0066cc] active:scale-95" type="button" data-action="quick-end">지금 종료</button>
             </div>
           </div>
 
-          <button onclick="submitOvertime()" id="btn-submit" class="w-full h-[54px] bg-[#0066cc] border border-[#0066cc] text-white font-normal text-[17px] rounded-full flex justify-center items-center gap-2 active:scale-95 transition-all shadow-sm">
-            <span>기록 저장하기</span>
+          <div>
+            <label class="mb-2 block text-sm font-bold text-[#6e6e73]" for="date-input">날짜</label>
+            <input id="date-input" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="date">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <label class="block text-sm font-bold text-[#6e6e73]">시작 시간
+              <input id="start-time" class="mt-2 h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-3 text-center text-[#1d1d1f] outline-none focus:border-[#0071e3]" type="time">
+            </label>
+            <label class="block text-sm font-bold text-[#6e6e73]">종료 시간
+              <input id="end-time" class="mt-2 h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-3 text-center text-[#1d1d1f] outline-none focus:border-[#0071e3]" type="time">
+            </label>
+          </div>
+
+          <label class="block text-sm font-bold text-[#6e6e73]">메모
+            <textarea id="memo-input" class="mt-2 min-h-24 w-full resize-y rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 py-3 text-[#1d1d1f] outline-none focus:border-[#0071e3]" placeholder="회의, 생활지도, 행사 준비 등"></textarea>
+          </label>
+
+          <div id="result-panel" class="hidden rounded-lg border border-[#e0e0e0] bg-[#f5f5f7] p-5">
+            <div class="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <span class="text-xs font-bold uppercase text-[#6e6e73]">아침</span>
+                <strong id="res-morning" class="mt-1 block text-xl">0:00</strong>
+              </div>
+              <div>
+                <span class="text-xs font-bold uppercase text-[#6e6e73]">오후</span>
+                <strong id="res-afternoon" class="mt-1 block text-xl">0:00</strong>
+              </div>
+              <div>
+                <span class="text-xs font-bold uppercase text-[#6e6e73]">일계</span>
+                <strong id="res-total" class="mt-1 block text-xl text-[#0066cc]">0:00</strong>
+              </div>
+            </div>
+          </div>
+
+          <button id="btn-submit" class="flex h-12 w-full items-center justify-center rounded-full bg-[#0066cc] font-semibold text-white active:scale-[0.98]" type="button" data-action="save-overtime">
+            기록 저장하기
           </button>
         </section>
       </div>
 
-      <div id="content-view" class="hidden animate-in fade-in duration-300">
-        <h3 id="calendar-title" class="text-[28px] md:text-[34px] font-semibold text-[#1d1d1f] mb-8 text-center tracking-[-0.374px]">현황</h3>
-        
-        <div class="grid grid-cols-7 mb-3 text-center text-[12px] md:text-[13px] text-[#86868b] uppercase font-semibold">
-          <div class="text-[#ff3b30]">Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div class="text-[#0066cc]">Sat</div>
-        </div>
-        
-        <div id="calendar-body" class="calendar-grid mb-10"></div>
-        
-        <div class="bg-[#f5f5f7] p-5 md:p-8 rounded-[18px] flex justify-around items-center border border-[#e0e0e0]">
-          <div class="flex flex-col items-center gap-1.5">
-            <span class="w-3 h-3 rounded-full bg-[#ff9500]"></span>
-            <span class="text-[12px] text-[#86868b] font-medium">아침</span>
-          </div>
-          <div class="flex flex-col items-center gap-1.5">
-            <span class="w-3 h-3 rounded-full bg-[#0066cc]"></span>
-            <span class="text-[12px] text-[#86868b] font-medium">오후</span>
-          </div>
-          <div class="flex flex-col items-center gap-1.5">
-            <div id="legend-total" class="px-2 py-0.5 rounded-[6px] bg-[#ffffff] border border-[#e0e0e0] font-semibold text-[#1d1d1f] text-[13px]">
-               0:00
+      <div id="content-view" class="hidden space-y-8">
+        <section>
+          <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+            <h2 id="calendar-title" class="text-3xl font-bold">현황</h2>
+            <div class="flex gap-2">
+              <button class="rounded-full border border-[#0066cc] px-3 py-2 text-sm font-semibold text-[#0066cc] active:scale-95" type="button" data-action="download-csv">CSV</button>
+              <button class="rounded-full border border-[#0066cc] px-3 py-2 text-sm font-semibold text-[#0066cc] active:scale-95" type="button" data-action="print-pdf">PDF</button>
             </div>
-            <span class="text-[12px] text-[#86868b] font-medium">일계</span>
           </div>
-        </div>
+
+          <div class="mb-3 grid grid-cols-7 text-center text-xs font-bold uppercase text-[#6e6e73]">
+            <div class="text-[#ff3b30]">Sun</div>
+            <div>Mon</div>
+            <div>Tue</div>
+            <div>Wed</div>
+            <div>Thu</div>
+            <div>Fri</div>
+            <div class="text-[#0066cc]">Sat</div>
+          </div>
+          <div id="calendar-body" class="calendar-grid"></div>
+        </section>
+
+        <section class="rounded-lg border border-[#e0e0e0] bg-[#f5f5f7] p-5">
+          <div class="grid grid-cols-3 gap-3 text-center">
+            <div class="flex flex-col items-center gap-1.5">
+              <span class="h-3 w-3 rounded-full bg-[#ff9500]"></span>
+              <span class="text-xs font-semibold text-[#6e6e73]">아침</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <span class="h-3 w-3 rounded-full bg-[#0066cc]"></span>
+              <span class="text-xs font-semibold text-[#6e6e73]">오후</span>
+            </div>
+            <div class="flex flex-col items-center gap-1.5">
+              <span class="rounded-md border border-[#d2d2d7] bg-white px-2 py-0.5 text-xs font-bold">0:00</span>
+              <span class="text-xs font-semibold text-[#6e6e73]">일계</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="rounded-lg border border-[#e0e0e0] bg-white p-5">
+          <div class="mb-4 flex items-center justify-between gap-3">
+            <h2 class="text-lg font-bold">최근 수정 이력</h2>
+            <button class="rounded-full px-3 py-2 text-sm font-semibold text-[#0066cc] active:bg-blue-50" type="button" data-action="refresh-history">새로고침</button>
+          </div>
+          <div id="history-list" class="space-y-3"></div>
+        </section>
       </div>
     </main>
   </div>
 
-  <div id="newSheetModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#000000]/50 hidden transition-opacity duration-300 backdrop-blur-sm">
-    <div class="bg-[#ffffff] w-full max-w-sm rounded-[24px] p-6 shadow-2xl animate-in zoom-in-95 duration-200">
-      <h3 class="text-[24px] font-semibold text-[#1d1d1f] mb-2 tracking-[0.196px]">새 월 시트 생성</h3>
-      <p class="text-[15px] text-[#86868b] mb-6">연도와 월을 입력해 주세요. (예: 26-5)</p>
-      
-      <input type="text" id="newSheetName" placeholder="YY-M" class="w-full h-[54px] bg-[#f5f5f7] border border-[#e0e0e0] rounded-[16px] px-4 text-[17px] text-[#1d1d1f] focus:border-[#0071e3] focus:outline-none mb-8 text-center tracking-[1px]">
-      
-      <div class="flex gap-3">
-        <button onclick="hideModal('newSheetModal')" class="flex-1 h-[50px] bg-transparent border border-[#0066cc] text-[#0066cc] font-medium text-[17px] rounded-full active:scale-95 transition-transform">취소</button>
-        <button onclick="confirmCreateSheet()" id="btn-create-sheet" class="flex-1 h-[50px] bg-[#0066cc] border border-[#0066cc] text-white font-medium text-[17px] rounded-full active:scale-95 transition-all shadow-sm">생성</button>
+  <div id="newSheetModal" class="fixed inset-0 z-40 hidden items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+    <div class="w-full max-w-sm rounded-lg bg-white p-6 shadow-2xl">
+      <h2 class="mb-2 text-2xl font-bold">새 월 시트</h2>
+      <p class="mb-6 text-sm text-[#6e6e73]">예: 26-5 또는 2026-5</p>
+      <input id="newSheetName" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 text-center font-semibold outline-none focus:border-[#0071e3]" type="text" placeholder="YY-M">
+      <div class="mt-6 grid grid-cols-2 gap-3">
+        <button class="h-12 rounded-full border border-[#0066cc] font-semibold text-[#0066cc] active:scale-95" type="button" data-action="close-new-sheet">취소</button>
+        <button id="btn-create-sheet" class="h-12 rounded-full bg-[#0066cc] font-semibold text-white active:scale-95" type="button" data-action="create-sheet">생성</button>
       </div>
     </div>
   </div>
 
-  <script>
-    // ★ 주의: Apps Script 배포 후 발급받은 '웹 앱 URL'을 아래에 붙여넣으세요.
-    const API_URL = "/api/overtime";
+  <div id="toast" class="pointer-events-none fixed bottom-5 left-1/2 z-50 hidden w-[calc(100%-32px)] max-w-sm -translate-x-1/2 rounded-lg bg-[#1d1d1f] px-4 py-3 text-center text-sm font-semibold text-white shadow-xl"></div>
+  <div id="print-root"></div>
 
+  <script>
+    const API_URL = '/api/overtime';
+    const PIN_STORAGE_KEY = 'overtime-app-pin';
+    const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+
+    let appPin = sessionStorage.getItem(PIN_STORAGE_KEY) || '';
     let currentAfterSchoolState = [];
     let currentSheetRecords = {};
     let allSheetData = {};
+    let currentHistory = [];
 
-    window.onload = function() { 
-      loadAppData(); 
-    };
+    const $ = (selector) => document.querySelector(selector);
 
-    /**
-     * Vercel 등 외부 환경에서 Apps Script와 통신하기 위한 Fetch 함수
-     */
-    async function fetchAPI(action, payload = {}) {
-      try {
-        const response = await fetch(API_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ action: action, ...payload })
-        });
-        const data = await response.json();
-        if (data.error) throw new Error(data.error);
-        return data;
-      } catch (error) {
-        console.error("API 통신 오류:", error);
-        return { error: error.message || "네트워크 오류가 발생했습니다." };
+    document.addEventListener('DOMContentLoaded', init);
+
+    function init() {
+      $('#pin-form').addEventListener('submit', unlock);
+      $('#logout-btn').addEventListener('click', lockApp);
+      $('#sheet-select').addEventListener('change', changeSheet);
+      $('#date-input').addEventListener('change', loadDateDetail);
+      document.addEventListener('click', handleDocumentClick);
+      registerServiceWorker();
+
+      if (appPin) {
+        hideLock();
+        loadAppData();
+      } else {
+        showLock();
       }
     }
 
-    function switchTab(tab) {
-      const tabs = { record: 'tab-record', view: 'tab-view' };
-      const contents = { record: 'content-record', view: 'content-view' };
-      Object.values(tabs).forEach(id => document.getElementById(id).classList.remove('active'));
-      Object.values(contents).forEach(id => document.getElementById(id).classList.add('hidden'));
-      document.getElementById(tabs[tab]).classList.add('active');
-      document.getElementById(contents[tab]).classList.remove('hidden');
-      if (tab === 'view') renderCalendar();
+    async function unlock(event) {
+      event.preventDefault();
+      const candidate = $('#pin-input').value.trim();
+      if (!candidate) return;
+
+      const button = $('#pin-submit');
+      const originalText = button.textContent;
+      $('#pin-error').textContent = '';
+      button.disabled = true;
+      button.innerHTML = '<div class="loading-spinner"></div>';
+
+      const data = await fetchAPI('getInitialAppData', {}, candidate);
+      button.disabled = false;
+      button.textContent = originalText;
+
+      if (data.error) {
+        sessionStorage.removeItem(PIN_STORAGE_KEY);
+        $('#pin-error').textContent = data.error;
+        $('#pin-form').classList.add('animate-shake');
+        setTimeout(() => $('#pin-form').classList.remove('animate-shake'), 400);
+        return;
+      }
+
+      appPin = candidate;
+      sessionStorage.setItem(PIN_STORAGE_KEY, appPin);
+      hideLock();
+      applyAppData(data);
+      showToast('열렸습니다.');
+    }
+
+    function lockApp() {
+      sessionStorage.removeItem(PIN_STORAGE_KEY);
+      appPin = '';
+      $('#pin-input').value = '';
+      showLock();
+    }
+
+    function showLock() {
+      $('#lock-screen').classList.remove('hidden');
+      $('#lock-screen').classList.add('flex');
+      $('#app-container').classList.add('hidden');
+      setTimeout(() => $('#pin-input').focus(), 50);
+    }
+
+    function hideLock() {
+      $('#lock-screen').classList.add('hidden');
+      $('#lock-screen').classList.remove('flex');
+      $('#app-container').classList.remove('hidden');
+    }
+
+    async function fetchAPI(action, payload = {}, pinOverride = appPin) {
+      try {
+        const response = await fetch(API_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-App-Pin': pinOverride || '',
+          },
+          body: JSON.stringify({ action, ...payload }),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.error) {
+          throw new Error(data.error || `요청 실패 (${response.status})`);
+        }
+        return data;
+      } catch (error) {
+        console.error('API 통신 오류:', error);
+        return { error: error.message || '네트워크 오류가 발생했습니다.' };
+      }
     }
 
     async function loadAppData() {
-      const res = await fetchAPI('getInitialAppData');
-      if (res.error) return alert("데이터 로딩 실패: " + res.error);
-      allSheetData = res;
-      updateSheetSelect(res);
-      updatePage(res);
+      const data = await fetchAPI('getInitialAppData');
+      if (data.error) {
+        showToast(`데이터 로딩 실패: ${data.error}`);
+        if (data.error.includes('비밀번호')) lockApp();
+        return;
+      }
+      applyAppData(data);
+    }
+
+    function applyAppData(data) {
+      allSheetData = data;
+      currentHistory = data.history || [];
+      updateSheetSelect(data);
+      updatePage(data);
+      renderHistory();
     }
 
     async function changeSheet() {
-      const name = document.getElementById('sheet-select').value;
-      const res = await fetchAPI('getSheetData', { sheetName: name });
-      if (res.error) return alert("시트 데이터 로딩 실패: " + res.error);
-      
-      allSheetData.summary = res.summary;
-      allSheetData.dates = res.dates;
-      allSheetData.records = res.records;
-      allSheetData.afterSchool = res.afterSchool;
+      const sheetName = $('#sheet-select').value;
+      if (!sheetName) return;
+
+      const data = await fetchAPI('getSheetData', { sheetName });
+      if (data.error) {
+        showToast(`시트 로딩 실패: ${data.error}`);
+        return;
+      }
+
+      allSheetData = {
+        ...allSheetData,
+        ...data,
+        currentSheet: sheetName,
+      };
+      currentHistory = data.history || currentHistory;
       updatePage(allSheetData);
+      renderHistory();
     }
 
-    function updateSheetSelect(res) {
-      const sheetSelect = document.getElementById('sheet-select');
+    function updateSheetSelect(data) {
+      const sheetSelect = $('#sheet-select');
       sheetSelect.innerHTML = '';
-      res.sheetNames.forEach(name => {
-        const opt = document.createElement('option');
-        opt.value = name; opt.innerText = name + ' 시트';
-        if(name === res.currentSheet) opt.selected = true;
-        sheetSelect.appendChild(opt);
+
+      if (!data.sheetNames || !data.sheetNames.length) {
+        sheetSelect.innerHTML = '<option value="">월 시트 없음</option>';
+        return;
+      }
+
+      data.sheetNames.forEach((name) => {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = `${name} 시트`;
+        option.selected = name === data.currentSheet;
+        sheetSelect.appendChild(option);
       });
     }
 
     function updatePage(data) {
       updateSummary(data.summary);
       currentSheetRecords = data.records || {};
-      
-      const sheetName = document.getElementById('sheet-select').value;
-      const now = new Date();
-      const parts = sheetName.split('-');
-      
-      let defaultY = now.getFullYear();
-      let defaultM = now.getMonth() + 1;
-      let defaultD = now.getDate();
-
-      if (parts.length === 2) {
-          defaultY = parseInt(parts[0]) + 2000;
-          defaultM = parseInt(parts[1]);
-          if (defaultY !== now.getFullYear() || defaultM !== now.getMonth() + 1) {
-              defaultD = 1; 
-          }
-      }
-      
-      const dateStr = `${defaultY}-${defaultM.toString().padStart(2, '0')}-${defaultD.toString().padStart(2, '0')}`;
-      document.getElementById('date-input').value = dateStr;
-      
+      renderAfterSchoolChips(data.afterSchool || []);
+      setDefaultDateFromSheet();
       loadDateDetail();
-      renderAfterSchoolChips(data.afterSchool);
+      renderCalendar();
     }
 
-    function updateSummary(summary) {
-      if (!summary) return;
-      document.getElementById('sum-total').innerText = summary.totalHours || '0:00';
-      document.getElementById('sum-approved').innerText = summary.approvedHours || '0';
-      document.getElementById('sum-pay').innerText = summary.totalPay ? '₩ ' + summary.totalPay : '₩ 0';
+    function updateSummary(summary = {}) {
+      $('#sum-total').textContent = summary.totalHours || '0:00';
+      $('#sum-approved').textContent = summary.approvedHours || '0';
+      $('#sum-pay').textContent = summary.totalPay ? `₩ ${summary.totalPay}` : '₩ 0';
     }
 
     function renderAfterSchoolChips(afterSchool) {
-      const container = document.getElementById('afterschool-container');
+      const container = $('#afterschool-container');
       container.innerHTML = '';
-      currentAfterSchoolState = afterSchool.map(d => d.isSelected);
+      currentAfterSchoolState = afterSchool.map((item) => item.isSelected);
+
       afterSchool.forEach((item, index) => {
         const chip = document.createElement('button');
-        chip.innerText = item.day;
-        const updateClass = (selected) => {
-          chip.className = "flex-1 h-[44px] rounded-[10px] text-[15px] font-medium transition-colors " + 
-            (selected 
-              ? "bg-[#1d1d1f] text-white" 
-              : "bg-[#f5f5f7] border border-[#e0e0e0] text-[#1d1d1f] hover:bg-[#e0e0e0]");
-        };
-        updateClass(currentAfterSchoolState[index]);
-        chip.onclick = () => {
+        chip.type = 'button';
+        chip.textContent = item.day;
+        chip.className = chipClass(currentAfterSchoolState[index]);
+        chip.addEventListener('click', () => {
           currentAfterSchoolState[index] = !currentAfterSchoolState[index];
-          updateClass(currentAfterSchoolState[index]);
-        };
+          chip.className = chipClass(currentAfterSchoolState[index]);
+        });
         container.appendChild(chip);
       });
     }
 
-    function renderCalendar() {
-      const sheetName = document.getElementById('sheet-select').value;
-      const calendarBody = document.getElementById('calendar-body');
-      if(!sheetName || !sheetName.includes('-')) return;
+    function chipClass(active) {
+      return `h-10 rounded-lg text-sm font-bold transition ${active ? 'bg-[#1d1d1f] text-white' : 'border border-[#d2d2d7] bg-[#f5f5f7] text-[#1d1d1f]'}`;
+    }
+
+    function setDefaultDateFromSheet() {
+      const sheetName = $('#sheet-select').value;
+      const now = new Date();
+      let year = now.getFullYear();
+      let month = now.getMonth() + 1;
+      let day = now.getDate();
       const parts = sheetName.split('-');
-      const year = parseInt(parts[0]) + 2000;
-      const month = parseInt(parts[1]);
-      document.getElementById('calendar-title').innerText = `${year}년 ${month}월`;
-      calendarBody.innerHTML = '';
-      
-      const firstDay = new Date(year, month - 1, 1).getDay();
-      const lastDate = new Date(year, month, 0).getDate();
-      const prevMonthLastDate = new Date(year, month - 1, 0).getDate();
-      
-      for (let i = firstDay - 1; i >= 0; i--) {
-        const div = document.createElement('div');
-        div.className = 'calendar-day not-month';
-        div.innerHTML = `<span class="text-[14px]">${prevMonthLastDate - i}</span>`;
-        calendarBody.appendChild(div);
-      }
-      
-      const now = new Date();
-      for (let day = 1; day <= lastDate; day++) {
-        const dateKey = `${month}월${day}일`;
-        const record = currentSheetRecords[dateKey];
-        const dayOfWeek = new Date(year, month - 1, day).getDay();
-        const div = document.createElement('div');
-        div.className = 'calendar-day';
-        
-        if (now.getFullYear() === year && now.getMonth() + 1 === month && now.getDate() === day) {
-           div.classList.add('today');
-        }
-        
-        let dateNumClass = "text-[16px] md:text-[17px] font-semibold ";
-        if (dayOfWeek === 0) dateNumClass += "text-[#ff3b30]";
-        else if (dayOfWeek === 6) dateNumClass += "text-[#0066cc]";
-        else dateNumClass += "text-[#1d1d1f]";
-        
-        let contentHtml = `<span class="${dateNumClass}">${day}</span>`;
-        if (record) {
-          contentHtml += `<div class="flex gap-1 mt-1.5">`;
-          if (record.morningExtra && record.morningExtra !== '0:00') contentHtml += `<span class="w-1.5 h-1.5 rounded-full bg-[#ff9500]"></span>`;
-          if (record.afternoonExtra && record.afternoonExtra !== '0:00') contentHtml += `<span class="w-1.5 h-1.5 rounded-full bg-[#0066cc]"></span>`;
-          contentHtml += `</div>`;
-          if (record.dailyTotal && record.dailyTotal !== '0:00') {
-            contentHtml += `<span class="text-[11px] font-bold text-[#1d1d1f] mt-1">${record.dailyTotal}</span>`;
-          }
-        }
-        div.innerHTML = contentHtml;
-        
-        div.onclick = () => {
-          const y = year;
-          const m = month.toString().padStart(2, '0');
-          const d = day.toString().padStart(2, '0');
-          document.getElementById('date-input').value = `${y}-${m}-${d}`;
-          switchTab('record');
-          loadDateDetail();
-        };
-        calendarBody.appendChild(div);
-      }
-    }
 
-    function setNowAsDefault() {
-      const now = new Date();
-      const hh = now.getHours().toString().padStart(2, '0');
-      const mm = now.getMinutes().toString().padStart(2, '0');
-      if (now.getHours() < 12) { document.getElementById('start-time').value = `${hh}:${mm}`; document.getElementById('end-time').value = ""; }
-      else { document.getElementById('start-time').value = ""; document.getElementById('end-time').value = `${hh}:${mm}`; }
-    }
-
-    function formatTimeInput(val) {
-      if (!val || val === "") return "";
-      if (val.includes(':')) {
-        const parts = val.split(':');
-        return parts[0].padStart(2, '0') + ":" + parts[1].padStart(2, '0');
+      if (parts.length === 2) {
+        year = Number(parts[0]) + 2000;
+        month = Number(parts[1]);
+        if (year !== now.getFullYear() || month !== now.getMonth() + 1) day = 1;
       }
-      return val;
-    }
 
-    function parseDateInput(val) {
-      if (!val) return "";
-      const parts = val.split('-');
-      if (parts.length !== 3) return "";
-      return `${parseInt(parts[1], 10)}월${parseInt(parts[2], 10)}일`;
+      $('#date-input').value = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     }
 
     function loadDateDetail() {
-      const dateVal = document.getElementById('date-input').value;
-      if (!dateVal) { setNowAsDefault(); return; }
-      
-      const startInput = document.getElementById('start-time');
-      const endInput = document.getElementById('end-time');
-
-      const normalizedDate = parseDateInput(dateVal);
-      const detail = currentSheetRecords[normalizedDate];
-
+      const dateText = parseDateInput($('#date-input').value);
+      const detail = currentSheetRecords[dateText];
       const now = new Date();
+      const currentTime = toTimeValue(now);
       const isAM = now.getHours() < 12;
-      const currentT = now.getHours().toString().padStart(2, '0') + ":" + now.getMinutes().toString().padStart(2, '0');
 
       if (detail) {
-        startInput.value = formatTimeInput(detail.startTime) || (isAM ? currentT : "");
-        endInput.value = formatTimeInput(detail.endTime) || (!isAM ? currentT : "");
-        
-        if (detail.startTime || detail.endTime) {
-          showResult(detail);
-        } else {
-          document.getElementById('result-panel').classList.add('hidden');
-        }
-      } else {
-        startInput.value = isAM ? currentT : "";
-        endInput.value = !isAM ? currentT : "";
-        document.getElementById('result-panel').classList.add('hidden');
+        $('#start-time').value = formatTimeInput(detail.startTime) || (isAM ? currentTime : '');
+        $('#end-time').value = formatTimeInput(detail.endTime) || (!isAM ? currentTime : '');
+        $('#memo-input').value = detail.memo || '';
+        if (detail.startTime || detail.endTime || detail.dailyTotal !== '0:00') showResult(detail);
+        else hideResult();
+        return;
       }
+
+      $('#start-time').value = isAM ? currentTime : '';
+      $('#end-time').value = !isAM ? currentTime : '';
+      $('#memo-input').value = '';
+      hideResult();
     }
 
-    function showResult(res) {
-      document.getElementById('result-panel').classList.remove('hidden');
-      document.getElementById('res-morning').innerText = res.morningExtra || '0:00';
-      document.getElementById('res-afternoon').innerText = res.afternoonExtra || '0:00';
-      document.getElementById('res-total').innerText = res.dailyTotal || '0:00';
+    function showResult(result) {
+      $('#result-panel').classList.remove('hidden');
+      $('#res-morning').textContent = result.morningExtra || '0:00';
+      $('#res-afternoon').textContent = result.afternoonExtra || '0:00';
+      $('#res-total').textContent = result.dailyTotal || '0:00';
     }
 
-    function showButtonError(btn, originalText) {
-      btn.disabled = false;
-      btn.innerHTML = `<span>오류 발생</span>`;
-      btn.classList.add('error-state', 'animate-shake');
-      setTimeout(() => {
-        btn.classList.remove('error-state', 'animate-shake');
-        btn.innerHTML = `<span>${originalText}</span>`;
-      }, 1500);
+    function hideResult() {
+      $('#result-panel').classList.add('hidden');
     }
 
-    async function submitOvertime() {
-      const name = document.getElementById('sheet-select').value;
-      const dateVal = document.getElementById('date-input').value;
-      const start = document.getElementById('start-time').value;
-      const end = document.getElementById('end-time').value;
-      const btn = document.getElementById('btn-submit');
-      
-      if (!dateVal) return;
-      
-      const dateText = parseDateInput(dateVal);
-      
-      const originalHtml = btn.innerHTML;
-      btn.disabled = true;
-      btn.innerHTML = '<div class="loading-spinner"></div>';
-      btn.classList.remove('error-state', 'animate-shake');
-      
-      const res = await fetchAPI('saveOvertime', {
-        sheetName: name, dateText: dateText, startTime: start, endTime: end
+    function handleDocumentClick(event) {
+      const button = event.target.closest('[data-action]');
+      if (!button) return;
+
+      const action = button.dataset.action;
+      if (action === 'save-days') saveAfterSchool();
+      if (action === 'save-overtime') submitOvertime();
+      if (action === 'quick-start') quickSave('start');
+      if (action === 'quick-end') quickSave('end');
+      if (action === 'download-csv') downloadMonthCsv();
+      if (action === 'print-pdf') printMonthReport();
+      if (action === 'refresh-history') refreshHistory();
+      if (action === 'open-new-sheet') showModal();
+      if (action === 'close-new-sheet') hideModal();
+      if (action === 'create-sheet') confirmCreateSheet();
+    }
+
+    document.addEventListener('click', (event) => {
+      const tabButton = event.target.closest('[data-tab]');
+      if (!tabButton) return;
+      switchTab(tabButton.dataset.tab);
+    });
+
+    function switchTab(tab) {
+      const isRecord = tab === 'record';
+      $('#tab-record').classList.toggle('active', isRecord);
+      $('#tab-view').classList.toggle('active', !isRecord);
+      $('#content-record').classList.toggle('hidden', !isRecord);
+      $('#content-view').classList.toggle('hidden', isRecord);
+      if (!isRecord) renderCalendar();
+    }
+
+    async function submitOvertime(source = 'manual') {
+      const sheetName = $('#sheet-select').value;
+      const dateText = parseDateInput($('#date-input').value);
+      if (!sheetName || !dateText) {
+        showToast('시트와 날짜를 확인해 주세요.');
+        return;
+      }
+
+      const button = $('#btn-submit');
+      const originalHtml = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = '<div class="loading-spinner"></div>';
+      button.classList.remove('error-state', 'animate-shake');
+
+      const data = await fetchAPI('saveOvertime', {
+        sheetName,
+        dateText,
+        startTime: $('#start-time').value,
+        endTime: $('#end-time').value,
+        memo: $('#memo-input').value.trim(),
+        source,
       });
 
-      if (res && res.success) {
-        btn.disabled = false; 
-        btn.innerHTML = originalHtml;
-        showResult(res); 
-        updateSummary(res.summary); 
-        currentSheetRecords = res.records; 
-      } else {
-        showButtonError(btn, "기록 저장하기");
+      button.disabled = false;
+      button.innerHTML = originalHtml;
+
+      if (!data.success) {
+        showButtonError(button, '기록 저장하기');
+        showToast(data.message || data.error || '저장에 실패했습니다.');
+        return;
       }
+
+      allSheetData = { ...allSheetData, ...data, currentSheet: sheetName };
+      currentSheetRecords = data.records || {};
+      currentHistory = data.history || currentHistory;
+      updateSummary(data.summary);
+      renderCalendar();
+      renderHistory();
+      showResult(currentSheetRecords[dateText] || {});
+      showToast('저장했습니다.');
+    }
+
+    async function quickSave(kind) {
+      const now = new Date();
+      $('#date-input').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const dateText = parseDateInput($('#date-input').value);
+      const existing = currentSheetRecords[dateText] || {};
+      const currentTime = toTimeValue(now);
+
+      $('#start-time').value = kind === 'start' ? currentTime : formatTimeInput(existing.startTime);
+      $('#end-time').value = kind === 'end' ? currentTime : formatTimeInput(existing.endTime);
+      $('#memo-input').value = existing.memo || $('#memo-input').value;
+
+      await submitOvertime(kind === 'start' ? 'quick-start' : 'quick-end');
     }
 
     async function saveAfterSchool() {
-      const name = document.getElementById('sheet-select').value;
-      const btn = document.getElementById('btn-save-days');
-      
-      btn.disabled = true;
-      const originalText = btn.innerText;
-      btn.innerText = "...";
-      btn.classList.remove('error-state', 'animate-shake');
-      
-      const res = await fetchAPI('saveAfterSchoolSettings', {
-        sheetName: name, settings: currentAfterSchoolState
+      const sheetName = $('#sheet-select').value;
+      if (!sheetName) return;
+
+      const button = $('#btn-save-days');
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.textContent = '...';
+
+      const data = await fetchAPI('saveAfterSchoolSettings', {
+        sheetName,
+        settings: currentAfterSchoolState,
       });
 
-      if (res && res.success) {
-        btn.disabled = false;
-        btn.innerText = "저장";
-        updateSummary(res.summary); 
-        currentSheetRecords = res.records; 
-      } else {
-        showButtonError(btn, originalText);
+      button.disabled = false;
+      button.textContent = originalText;
+
+      if (!data.success) {
+        showButtonError(button, originalText);
+        showToast(data.message || data.error || '저장에 실패했습니다.');
+        return;
+      }
+
+      allSheetData = { ...allSheetData, ...data, currentSheet: sheetName };
+      currentSheetRecords = data.records || {};
+      currentHistory = data.history || currentHistory;
+      updateSummary(data.summary);
+      renderCalendar();
+      renderHistory();
+      showToast('방과후 요일을 저장했습니다.');
+    }
+
+    async function confirmCreateSheet() {
+      const targetName = $('#newSheetName').value.trim();
+      if (!targetName) return;
+
+      const button = $('#btn-create-sheet');
+      const originalText = button.textContent;
+      button.disabled = true;
+      button.innerHTML = '<div class="mx-auto loading-spinner"></div>';
+
+      const data = await fetchAPI('createNewMonthSheet', { targetName });
+      button.disabled = false;
+      button.textContent = originalText;
+
+      if (!data.success) {
+        showButtonError(button, originalText);
+        showToast(data.message || data.error || '시트 생성에 실패했습니다.');
+        return;
+      }
+
+      hideModal();
+      $('#newSheetName').value = '';
+      applyAppData(data);
+      showToast(`${data.newSheetName} 시트를 만들었습니다.`);
+    }
+
+    async function refreshHistory() {
+      const data = await fetchAPI('getHistory');
+      if (data.error) {
+        showToast(`이력 로딩 실패: ${data.error}`);
+        return;
+      }
+      currentHistory = data.history || [];
+      renderHistory();
+      showToast('수정 이력을 새로고침했습니다.');
+    }
+
+    function renderCalendar() {
+      const sheetName = $('#sheet-select').value;
+      const calendarBody = $('#calendar-body');
+      if (!calendarBody || !sheetName || !sheetName.includes('-')) return;
+
+      const [yy, monthText] = sheetName.split('-');
+      const year = Number(yy) + 2000;
+      const month = Number(monthText);
+      $('#calendar-title').textContent = `${year}년 ${month}월`;
+      calendarBody.innerHTML = '';
+
+      const firstDay = new Date(year, month - 1, 1).getDay();
+      const lastDate = new Date(year, month, 0).getDate();
+      const prevMonthLastDate = new Date(year, month - 1, 0).getDate();
+
+      for (let index = firstDay - 1; index >= 0; index -= 1) {
+        const div = document.createElement('div');
+        div.className = 'calendar-day not-month';
+        div.innerHTML = `<span class="text-sm">${prevMonthLastDate - index}</span>`;
+        calendarBody.appendChild(div);
+      }
+
+      const now = new Date();
+      for (let day = 1; day <= lastDate; day += 1) {
+        const dateKey = `${month}월${day}일`;
+        const record = currentSheetRecords[dateKey];
+        const dayOfWeek = new Date(year, month - 1, day).getDay();
+        const div = document.createElement('button');
+        div.type = 'button';
+        div.className = 'calendar-day';
+
+        if (now.getFullYear() === year && now.getMonth() + 1 === month && now.getDate() === day) {
+          div.classList.add('today');
+        }
+
+        const dayColor = dayOfWeek === 0 ? 'text-[#ff3b30]' : dayOfWeek === 6 ? 'text-[#0066cc]' : 'text-[#1d1d1f]';
+        let content = `<span class="text-base font-bold ${dayColor}">${day}</span>`;
+
+        if (record) {
+          content += '<div class="mt-1.5 flex gap-1">';
+          if (record.morningExtra && record.morningExtra !== '0:00') content += '<span class="h-1.5 w-1.5 rounded-full bg-[#ff9500]"></span>';
+          if (record.afternoonExtra && record.afternoonExtra !== '0:00') content += '<span class="h-1.5 w-1.5 rounded-full bg-[#0066cc]"></span>';
+          if (record.memo) content += '<span class="h-1.5 w-1.5 rounded-full bg-[#34c759]"></span>';
+          content += '</div>';
+          if (record.dailyTotal && record.dailyTotal !== '0:00') {
+            content += `<span class="mt-1 text-xs font-bold">${escapeHtml(record.dailyTotal)}</span>`;
+          }
+        }
+
+        div.innerHTML = content;
+        div.addEventListener('click', () => {
+          $('#date-input').value = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+          switchTab('record');
+          loadDateDetail();
+        });
+        calendarBody.appendChild(div);
       }
     }
 
-    function showModal(id) { document.getElementById(id).classList.remove('hidden'); }
-    function hideModal(id) { document.getElementById(id).classList.add('hidden'); }
-    
-    async function confirmCreateSheet() {
-      const name = document.getElementById('newSheetName').value.trim();
-      if (!name) return;
-      
-      const btn = document.getElementById('btn-create-sheet');
-      btn.disabled = true;
-      const originalText = btn.innerText;
-      btn.innerHTML = '<div class="loading-spinner" style="width: 20px; height: 20px; border-width: 2px;"></div>';
-      btn.classList.remove('error-state', 'animate-shake');
+    function renderHistory() {
+      const historyList = $('#history-list');
+      if (!historyList) return;
 
-      const res = await fetchAPI('createNewMonthSheet', { targetName: name });
-
-      if (res && res.success) {
-        hideModal('newSheetModal');
-        btn.disabled = false;
-        btn.innerText = originalText;
-        loadAppData();
-      } else {
-        showButtonError(btn, originalText);
+      if (!currentHistory.length) {
+        historyList.innerHTML = '<p class="text-sm text-[#6e6e73]">아직 기록된 수정 이력이 없습니다.</p>';
+        return;
       }
+
+      historyList.innerHTML = currentHistory.slice(0, 12).map((item) => `
+        <article class="rounded-lg border border-[#e0e0e0] bg-[#f5f5f7] p-3">
+          <div class="flex items-start justify-between gap-3">
+            <strong class="text-sm">${escapeHtml(item.action || '-')}</strong>
+            <span class="shrink-0 text-xs text-[#6e6e73]">${escapeHtml(item.timestamp || '')}</span>
+          </div>
+          <p class="mt-1 text-sm text-[#1d1d1f]">${escapeHtml([item.sheetName, item.dateText].filter(Boolean).join(' · '))}</p>
+          <p class="mt-1 line-clamp-2 text-xs text-[#6e6e73]">${escapeHtml(item.detail || item.memo || '')}</p>
+        </article>
+      `).join('');
+    }
+
+    function buildExportRows() {
+      const sheetName = $('#sheet-select').value;
+      const dates = allSheetData.dates || [];
+      return dates.map((date) => {
+        const key = date.key || normalizeDate(date.dateText);
+        const record = currentSheetRecords[key] || {};
+        return {
+          sheetName,
+          dateText: date.dateText,
+          startTime: record.startTime || '',
+          endTime: record.endTime || '',
+          morningExtra: record.morningExtra || '0:00',
+          afternoonExtra: record.afternoonExtra || '0:00',
+          dailyTotal: record.dailyTotal || '0:00',
+          memo: record.memo || '',
+        };
+      });
+    }
+
+    function downloadMonthCsv() {
+      const rows = buildExportRows();
+      if (!rows.length) {
+        showToast('내보낼 데이터가 없습니다.');
+        return;
+      }
+
+      const header = ['월', '날짜', '시작', '종료', '아침 초과', '오후 초과', '일계', '메모'];
+      const csvRows = rows.map((row) => [row.sheetName, row.dateText, row.startTime, row.endTime, row.morningExtra, row.afternoonExtra, row.dailyTotal, row.memo]);
+      const csv = [header, ...csvRows].map((row) => row.map(csvEscape).join(',')).join('\n');
+      const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `overtime_${$('#sheet-select').value}_${timestamp()}.csv`;
+      document.body.append(link);
+      link.click();
+      URL.revokeObjectURL(link.href);
+      link.remove();
+      showToast('CSV를 저장했습니다.');
+    }
+
+    function printMonthReport() {
+      const rows = buildExportRows();
+      if (!rows.length) {
+        showToast('인쇄할 데이터가 없습니다.');
+        return;
+      }
+
+      $('#print-root').innerHTML = `
+        <h1>초과근무 월별 보고서</h1>
+        <h2>${escapeHtml($('#sheet-select').value)} 시트</h2>
+        <table>
+          <thead>
+            <tr><th>날짜</th><th>시작</th><th>종료</th><th>아침</th><th>오후</th><th>일계</th><th>메모</th></tr>
+          </thead>
+          <tbody>
+            ${rows.map((row) => `
+              <tr>
+                <td>${escapeHtml(row.dateText)}</td>
+                <td>${escapeHtml(row.startTime)}</td>
+                <td>${escapeHtml(row.endTime)}</td>
+                <td>${escapeHtml(row.morningExtra)}</td>
+                <td>${escapeHtml(row.afternoonExtra)}</td>
+                <td>${escapeHtml(row.dailyTotal)}</td>
+                <td>${escapeHtml(row.memo)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+      document.body.classList.add('printing');
+      window.print();
+      setTimeout(() => document.body.classList.remove('printing'), 500);
+    }
+
+    function showModal() {
+      $('#newSheetModal').classList.remove('hidden');
+      $('#newSheetModal').classList.add('flex');
+      setTimeout(() => $('#newSheetName').focus(), 50);
+    }
+
+    function hideModal() {
+      $('#newSheetModal').classList.add('hidden');
+      $('#newSheetModal').classList.remove('flex');
+    }
+
+    function showButtonError(button, text) {
+      button.disabled = false;
+      button.textContent = '오류 발생';
+      button.classList.add('error-state', 'animate-shake');
+      setTimeout(() => {
+        button.classList.remove('error-state', 'animate-shake');
+        button.textContent = text;
+      }, 1400);
+    }
+
+    function showToast(message) {
+      const toast = $('#toast');
+      toast.textContent = message;
+      toast.classList.remove('hidden');
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.add('hidden'), 2600);
+    }
+
+    function parseDateInput(value) {
+      if (!value) return '';
+      const [year, month, day] = value.split('-');
+      if (!year || !month || !day) return '';
+      return `${Number(month)}월${Number(day)}일`;
+    }
+
+    function normalizeDate(value) {
+      return String(value || '').replace(/\s+/g, '');
+    }
+
+    function formatTimeInput(value) {
+      if (!value) return '';
+      const text = String(value);
+      if (!text.includes(':')) return text;
+      const [hour, minute] = text.split(':');
+      return `${hour.padStart(2, '0')}:${String(minute || '00').padStart(2, '0')}`;
+    }
+
+    function toTimeValue(date) {
+      return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    }
+
+    function csvEscape(value) {
+      const text = String(value ?? '');
+      return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    }
+
+    function timestamp() {
+      const date = new Date();
+      const pad = (value) => String(value).padStart(2, '0');
+      return `${date.getFullYear()}${pad(date.getMonth() + 1)}${pad(date.getDate())}_${pad(date.getHours())}${pad(date.getMinutes())}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function registerServiceWorker() {
+      if (!('serviceWorker' in navigator)) return;
+      navigator.serviceWorker.register('/sw.js').catch((error) => {
+        console.warn('Service worker registration failed:', error);
+      });
     }
   </script>
 </body>
