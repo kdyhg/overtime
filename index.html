@@ -14,9 +14,7 @@
     :root {
       --primary: #0066cc;
       --primary-focus: #0071e3;
-      --canvas: #ffffff;
       --parchment: #f5f5f7;
-      --line: #e0e0e0;
       --ink: #1d1d1f;
       --muted: #6e6e73;
       --error: #ff3b30;
@@ -46,6 +44,17 @@
       opacity: 0.6;
     }
 
+    .auth-panel,
+    .tab-panel {
+      display: none;
+    }
+
+    .auth-panel.active,
+    .tab-panel.active {
+      display: block;
+    }
+
+    .auth-tab.active,
     .tab-btn.active {
       color: var(--primary);
       border-bottom-color: var(--primary);
@@ -76,14 +85,19 @@
       background: #e5e5ea;
     }
 
-    .calendar-day.not-month {
-      opacity: 0.35;
-      pointer-events: none;
-    }
-
     .calendar-day.today {
       background: #e8f2fc;
       border-color: var(--primary-focus);
+    }
+
+    .calendar-day.selected {
+      border-color: var(--primary);
+      box-shadow: inset 0 0 0 1px var(--primary);
+    }
+
+    .calendar-day.not-month {
+      opacity: 0.35;
+      pointer-events: none;
     }
 
     .loading-spinner {
@@ -100,17 +114,6 @@
       to { transform: rotate(360deg); }
     }
 
-    @keyframes shake {
-      0%, 100% { transform: translateX(0); }
-      25% { transform: translateX(-5px); }
-      50% { transform: translateX(5px); }
-      75% { transform: translateX(-5px); }
-    }
-
-    .animate-shake {
-      animation: shake 0.36s ease-in-out;
-    }
-
     .error-state {
       background: var(--error) !important;
       border-color: var(--error) !important;
@@ -123,7 +126,7 @@
 
     @media print {
       body.printing #app-container,
-      body.printing #lock-screen,
+      body.printing #auth-screen,
       body.printing #toast {
         display: none !important;
       }
@@ -155,29 +158,62 @@
   </style>
 </head>
 <body class="antialiased">
-  <div id="lock-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-[#1d1d1f] px-5">
-    <form id="pin-form" class="w-full max-w-sm rounded-lg bg-white p-6 shadow-2xl">
-      <div class="mb-6 text-center">
-        <p class="text-sm font-semibold uppercase text-[#0066cc]">Overtime</p>
-        <h1 class="mt-1 text-2xl font-bold text-[#1d1d1f]">비밀번호 입력</h1>
+  <section id="auth-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-[#1d1d1f] px-4 py-6">
+    <div class="w-full max-w-md rounded-lg bg-white p-5 shadow-2xl">
+      <div class="mb-5 text-center">
+        <p class="text-sm font-bold uppercase text-[#0066cc]">Overtime</p>
+        <h1 class="mt-1 text-2xl font-bold">계정 로그인</h1>
       </div>
-      <label class="block text-sm font-semibold text-[#6e6e73]" for="pin-input">비밀번호</label>
-      <input id="pin-input" class="mt-2 h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 text-center text-xl font-semibold outline-none focus:border-[#0071e3]" type="password" inputmode="numeric" autocomplete="current-password" placeholder="4자리">
-      <p id="pin-error" class="mt-3 min-h-5 text-center text-sm font-medium text-[#ff3b30]"></p>
-      <button id="pin-submit" class="mt-4 flex h-12 w-full items-center justify-center rounded-full bg-[#0066cc] text-white active:scale-[0.98]" type="submit">
-        열기
-      </button>
-    </form>
-  </div>
+
+      <div class="mb-5 grid grid-cols-4 border-b border-[#e0e0e0] text-center text-sm">
+        <button class="auth-tab active border-b-2 border-transparent py-3 text-[#6e6e73]" type="button" data-auth-tab="login">로그인</button>
+        <button class="auth-tab border-b-2 border-transparent py-3 text-[#6e6e73]" type="button" data-auth-tab="signup">회원가입</button>
+        <button class="auth-tab border-b-2 border-transparent py-3 text-[#6e6e73]" type="button" data-auth-tab="find">ID 찾기</button>
+        <button class="auth-tab border-b-2 border-transparent py-3 text-[#6e6e73]" type="button" data-auth-tab="reset">PW 재설정</button>
+      </div>
+
+      <form id="login-panel" class="auth-panel active space-y-3">
+        <input id="login-username" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="text" autocomplete="username" placeholder="아이디">
+        <input id="login-password" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="password" autocomplete="current-password" placeholder="비밀번호">
+        <button class="flex h-12 w-full items-center justify-center rounded-full bg-[#0066cc] font-semibold text-white active:scale-[0.98]" type="submit">로그인</button>
+      </form>
+
+      <form id="signup-panel" class="auth-panel space-y-3">
+        <input id="signup-username" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="text" autocomplete="username" placeholder="아이디">
+        <input id="signup-name" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="text" autocomplete="name" placeholder="이름">
+        <input id="signup-password" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="password" autocomplete="new-password" placeholder="비밀번호">
+        <input id="signup-recovery" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="password" placeholder="복구코드">
+        <input id="signup-code" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="password" placeholder="가입코드">
+        <button class="flex h-12 w-full items-center justify-center rounded-full bg-[#0066cc] font-semibold text-white active:scale-[0.98]" type="submit">가입하고 시작</button>
+      </form>
+
+      <form id="find-panel" class="auth-panel space-y-3">
+        <input id="find-name" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="text" placeholder="이름">
+        <input id="find-recovery" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="password" placeholder="복구코드">
+        <button class="h-12 w-full rounded-full border border-[#0066cc] font-semibold text-[#0066cc] active:scale-[0.98]" type="submit">아이디 찾기</button>
+        <p id="find-result" class="min-h-5 text-center text-sm font-semibold text-[#1d1d1f]"></p>
+      </form>
+
+      <form id="reset-panel" class="auth-panel space-y-3">
+        <input id="reset-username" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="text" placeholder="아이디">
+        <input id="reset-recovery" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="password" placeholder="복구코드">
+        <input id="reset-password" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="password" autocomplete="new-password" placeholder="새 비밀번호">
+        <button class="h-12 w-full rounded-full border border-[#0066cc] font-semibold text-[#0066cc] active:scale-[0.98]" type="submit">비밀번호 재설정</button>
+      </form>
+
+      <p id="auth-message" class="mt-4 min-h-5 text-center text-sm font-semibold text-[#ff3b30]"></p>
+    </div>
+  </section>
 
   <div id="app-container" class="hidden min-h-screen w-full bg-white md:mx-auto md:max-w-2xl md:shadow-xl">
-    <header class="bg-[#272729] px-4 py-8 text-white md:px-8">
+    <header class="bg-[#272729] px-4 py-7 text-white md:px-8">
       <div class="flex items-start justify-between gap-4">
         <div>
           <h1 class="text-4xl font-bold leading-tight">Overtime</h1>
           <p class="mt-2 text-base font-semibold text-[#cccccc]">초과근무 기록 시스템</p>
+          <p id="user-label" class="mt-3 text-sm text-[#cccccc]"></p>
         </div>
-        <button id="logout-btn" class="rounded-full border border-white/30 px-3 py-2 text-sm text-white active:scale-95" type="button">잠금</button>
+        <button id="logout-btn" class="rounded-full border border-white/30 px-3 py-2 text-sm text-white active:scale-95" type="button">로그아웃</button>
       </div>
     </header>
 
@@ -207,15 +243,19 @@
     </nav>
 
     <main class="bg-white px-4 py-8 pb-28 md:px-6">
-      <div id="content-record" class="space-y-8">
+      <div id="content-record" class="tab-panel active space-y-8">
         <section>
           <div class="mb-3 flex items-center justify-between gap-3">
             <label class="font-bold" for="sheet-select">대상 월</label>
             <button class="rounded-full px-3 py-2 text-sm font-semibold text-[#0066cc] active:bg-blue-50" type="button" data-action="open-new-sheet">+ 새 월</button>
           </div>
-          <select id="sheet-select" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]">
-            <option value="">데이터 로딩 중...</option>
-          </select>
+          <div class="grid grid-cols-[1fr_auto] gap-2">
+            <select id="sheet-select" class="h-12 rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]">
+              <option value="">데이터 로딩 중...</option>
+            </select>
+            <button id="lock-toggle-btn" class="h-12 rounded-lg border border-[#d2d2d7] px-3 text-sm font-bold text-[#1d1d1f]" type="button" data-action="toggle-lock">마감</button>
+          </div>
+          <p id="lock-label" class="mt-2 text-sm font-semibold text-[#6e6e73]"></p>
         </section>
 
         <section class="rounded-lg border border-[#e0e0e0] bg-white p-5">
@@ -249,34 +289,25 @@
             </label>
           </div>
 
-          <label class="block text-sm font-bold text-[#6e6e73]">메모
-            <textarea id="memo-input" class="mt-2 min-h-24 w-full resize-y rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 py-3 text-[#1d1d1f] outline-none focus:border-[#0071e3]" placeholder="회의, 생활지도, 행사 준비 등"></textarea>
-          </label>
+          <div>
+            <label class="mb-2 block text-sm font-bold text-[#6e6e73]" for="memo-input">메모</label>
+            <div id="reason-buttons" class="mb-2 flex flex-wrap gap-2"></div>
+            <textarea id="memo-input" class="min-h-24 w-full resize-y rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 py-3 text-[#1d1d1f] outline-none focus:border-[#0071e3]" placeholder="사유를 직접 입력하거나 버튼을 눌러 추가하세요."></textarea>
+          </div>
 
           <div id="result-panel" class="hidden rounded-lg border border-[#e0e0e0] bg-[#f5f5f7] p-5">
             <div class="grid grid-cols-3 gap-3 text-center">
-              <div>
-                <span class="text-xs font-bold uppercase text-[#6e6e73]">아침</span>
-                <strong id="res-morning" class="mt-1 block text-xl">0:00</strong>
-              </div>
-              <div>
-                <span class="text-xs font-bold uppercase text-[#6e6e73]">오후</span>
-                <strong id="res-afternoon" class="mt-1 block text-xl">0:00</strong>
-              </div>
-              <div>
-                <span class="text-xs font-bold uppercase text-[#6e6e73]">일계</span>
-                <strong id="res-total" class="mt-1 block text-xl text-[#0066cc]">0:00</strong>
-              </div>
+              <div><span class="text-xs font-bold uppercase text-[#6e6e73]">아침</span><strong id="res-morning" class="mt-1 block text-xl">0:00</strong></div>
+              <div><span class="text-xs font-bold uppercase text-[#6e6e73]">오후</span><strong id="res-afternoon" class="mt-1 block text-xl">0:00</strong></div>
+              <div><span class="text-xs font-bold uppercase text-[#6e6e73]">일계</span><strong id="res-total" class="mt-1 block text-xl text-[#0066cc]">0:00</strong></div>
             </div>
           </div>
 
-          <button id="btn-submit" class="flex h-12 w-full items-center justify-center rounded-full bg-[#0066cc] font-semibold text-white active:scale-[0.98]" type="button" data-action="save-overtime">
-            기록 저장하기
-          </button>
+          <button id="btn-submit" class="flex h-12 w-full items-center justify-center rounded-full bg-[#0066cc] font-semibold text-white active:scale-[0.98]" type="button" data-action="save-overtime">기록 저장하기</button>
         </section>
       </div>
 
-      <div id="content-view" class="hidden space-y-8">
+      <div id="content-view" class="tab-panel space-y-8">
         <section>
           <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
             <h2 id="calendar-title" class="text-3xl font-bold">현황</h2>
@@ -285,34 +316,14 @@
               <button class="rounded-full border border-[#0066cc] px-3 py-2 text-sm font-semibold text-[#0066cc] active:scale-95" type="button" data-action="print-pdf">PDF</button>
             </div>
           </div>
-
           <div class="mb-3 grid grid-cols-7 text-center text-xs font-bold uppercase text-[#6e6e73]">
-            <div class="text-[#ff3b30]">Sun</div>
-            <div>Mon</div>
-            <div>Tue</div>
-            <div>Wed</div>
-            <div>Thu</div>
-            <div>Fri</div>
-            <div class="text-[#0066cc]">Sat</div>
+            <div class="text-[#ff3b30]">Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div class="text-[#0066cc]">Sat</div>
           </div>
           <div id="calendar-body" class="calendar-grid"></div>
         </section>
 
-        <section class="rounded-lg border border-[#e0e0e0] bg-[#f5f5f7] p-5">
-          <div class="grid grid-cols-3 gap-3 text-center">
-            <div class="flex flex-col items-center gap-1.5">
-              <span class="h-3 w-3 rounded-full bg-[#ff9500]"></span>
-              <span class="text-xs font-semibold text-[#6e6e73]">아침</span>
-            </div>
-            <div class="flex flex-col items-center gap-1.5">
-              <span class="h-3 w-3 rounded-full bg-[#0066cc]"></span>
-              <span class="text-xs font-semibold text-[#6e6e73]">오후</span>
-            </div>
-            <div class="flex flex-col items-center gap-1.5">
-              <span class="rounded-md border border-[#d2d2d7] bg-white px-2 py-0.5 text-xs font-bold">0:00</span>
-              <span class="text-xs font-semibold text-[#6e6e73]">일계</span>
-            </div>
-          </div>
+        <section id="date-detail" class="rounded-lg border border-[#e0e0e0] bg-white p-5">
+          <p class="text-sm font-semibold text-[#6e6e73]">날짜를 선택하세요.</p>
         </section>
 
         <section class="rounded-lg border border-[#e0e0e0] bg-white p-5">
@@ -343,153 +354,198 @@
 
   <script>
     const API_URL = '/api/overtime';
-    const PIN_STORAGE_KEY = 'overtime-app-pin';
-    const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+    const TOKEN_KEY = 'overtime-app-token';
+    const USER_KEY = 'overtime-app-user';
+    const REASONS = ['회의', '생활지도', '방과후', '행사', '상담', '기타'];
 
-    let appPin = sessionStorage.getItem(PIN_STORAGE_KEY) || '';
+    let authToken = sessionStorage.getItem(TOKEN_KEY) || '';
+    let authUser = readStoredUser();
     let currentAfterSchoolState = [];
     let currentSheetRecords = {};
     let allSheetData = {};
     let currentHistory = [];
+    let selectedDateKey = '';
 
     const $ = (selector) => document.querySelector(selector);
 
     document.addEventListener('DOMContentLoaded', init);
 
     function init() {
-      $('#pin-form').addEventListener('submit', unlock);
-      $('#logout-btn').addEventListener('click', lockApp);
+      document.addEventListener('click', handleDocumentClick);
+      document.querySelectorAll('.auth-tab').forEach((button) => button.addEventListener('click', () => switchAuthTab(button.dataset.authTab)));
+      $('#login-panel').addEventListener('submit', login);
+      $('#signup-panel').addEventListener('submit', signup);
+      $('#find-panel').addEventListener('submit', findUsername);
+      $('#reset-panel').addEventListener('submit', resetPassword);
+      $('#logout-btn').addEventListener('click', logout);
       $('#sheet-select').addEventListener('change', changeSheet);
       $('#date-input').addEventListener('change', loadDateDetail);
-      document.addEventListener('click', handleDocumentClick);
+      renderReasonButtons();
       registerServiceWorker();
 
-      if (appPin) {
-        hideLock();
+      if (authToken) {
+        hideAuth();
         loadAppData();
       } else {
-        showLock();
+        showAuth();
       }
     }
 
-    async function unlock(event) {
+    function readStoredUser() {
+      try {
+        return JSON.parse(sessionStorage.getItem(USER_KEY) || 'null');
+      } catch {
+        return null;
+      }
+    }
+
+    function switchAuthTab(name) {
+      document.querySelectorAll('.auth-tab').forEach((button) => button.classList.toggle('active', button.dataset.authTab === name));
+      document.querySelectorAll('.auth-panel').forEach((panel) => panel.classList.toggle('active', panel.id === `${name}-panel`));
+      $('#auth-message').textContent = '';
+    }
+
+    async function login(event) {
       event.preventDefault();
-      const candidate = $('#pin-input').value.trim();
-      if (!candidate) return;
-
-      const button = $('#pin-submit');
-      const originalText = button.textContent;
-      $('#pin-error').textContent = '';
-      button.disabled = true;
-      button.innerHTML = '<div class="loading-spinner"></div>';
-
-      const data = await fetchAPI('getInitialAppData', {}, candidate);
-      button.disabled = false;
-      button.textContent = originalText;
-
-      if (data.error) {
-        sessionStorage.removeItem(PIN_STORAGE_KEY);
-        $('#pin-error').textContent = data.error;
-        $('#pin-form').classList.add('animate-shake');
-        setTimeout(() => $('#pin-form').classList.remove('animate-shake'), 400);
-        return;
-      }
-
-      appPin = candidate;
-      sessionStorage.setItem(PIN_STORAGE_KEY, appPin);
-      hideLock();
-      applyAppData(data);
-      showToast('열렸습니다.');
+      setAuthMessage('');
+      const result = await fetchAPI('login', {
+        username: $('#login-username').value,
+        password: $('#login-password').value,
+      }, { publicRequest: true });
+      if (result.error) return setAuthMessage(result.error);
+      acceptAuth(result);
+      showToast('로그인했습니다.');
     }
 
-    function lockApp() {
-      sessionStorage.removeItem(PIN_STORAGE_KEY);
-      appPin = '';
-      $('#pin-input').value = '';
-      showLock();
+    async function signup(event) {
+      event.preventDefault();
+      setAuthMessage('');
+      const result = await fetchAPI('signup', {
+        username: $('#signup-username').value,
+        displayName: $('#signup-name').value,
+        password: $('#signup-password').value,
+        recoveryCode: $('#signup-recovery').value,
+        signupCode: $('#signup-code').value,
+      }, { publicRequest: true });
+      if (result.error) return setAuthMessage(result.error);
+      acceptAuth(result);
+      showToast('계정을 만들었습니다.');
     }
 
-    function showLock() {
-      $('#lock-screen').classList.remove('hidden');
-      $('#lock-screen').classList.add('flex');
+    async function findUsername(event) {
+      event.preventDefault();
+      setAuthMessage('');
+      const result = await fetchAPI('findUsername', {
+        displayName: $('#find-name').value,
+        recoveryCode: $('#find-recovery').value,
+      }, { publicRequest: true });
+      if (result.error) return setAuthMessage(result.error);
+      $('#find-result').textContent = result.usernames?.length ? `아이디: ${result.usernames.join(', ')}` : '일치하는 아이디가 없습니다.';
+    }
+
+    async function resetPassword(event) {
+      event.preventDefault();
+      setAuthMessage('');
+      const result = await fetchAPI('resetPassword', {
+        username: $('#reset-username').value,
+        recoveryCode: $('#reset-recovery').value,
+        newPassword: $('#reset-password').value,
+      }, { publicRequest: true });
+      if (result.error) return setAuthMessage(result.error);
+      switchAuthTab('login');
+      showToast('비밀번호를 재설정했습니다.');
+    }
+
+    function acceptAuth(result) {
+      authToken = result.token;
+      authUser = result.user;
+      sessionStorage.setItem(TOKEN_KEY, authToken);
+      sessionStorage.setItem(USER_KEY, JSON.stringify(authUser));
+      hideAuth();
+      applyAppData(result);
+    }
+
+    function logout() {
+      authToken = '';
+      authUser = null;
+      sessionStorage.removeItem(TOKEN_KEY);
+      sessionStorage.removeItem(USER_KEY);
+      showAuth();
+    }
+
+    function showAuth() {
+      $('#auth-screen').classList.remove('hidden');
+      $('#auth-screen').classList.add('flex');
       $('#app-container').classList.add('hidden');
-      setTimeout(() => $('#pin-input').focus(), 50);
     }
 
-    function hideLock() {
-      $('#lock-screen').classList.add('hidden');
-      $('#lock-screen').classList.remove('flex');
+    function hideAuth() {
+      $('#auth-screen').classList.add('hidden');
+      $('#auth-screen').classList.remove('flex');
       $('#app-container').classList.remove('hidden');
     }
 
-    async function fetchAPI(action, payload = {}, pinOverride = appPin) {
+    function setAuthMessage(message) {
+      $('#auth-message').textContent = message;
+    }
+
+    async function fetchAPI(action, payload = {}, options = {}) {
       try {
         const response = await fetch(API_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-App-Pin': pinOverride || '',
+            ...(options.publicRequest ? {} : { Authorization: `Bearer ${authToken}` }),
           },
           body: JSON.stringify({ action, ...payload }),
         });
         const data = await response.json().catch(() => ({}));
-        if (!response.ok || data.error) {
-          throw new Error(data.error || `요청 실패 (${response.status})`);
-        }
+        if (!response.ok || data.error) throw Object.assign(new Error(data.error || data.message || `요청 실패 (${response.status})`), { code: data.code, data });
         return data;
       } catch (error) {
-        console.error('API 통신 오류:', error);
-        return { error: error.message || '네트워크 오류가 발생했습니다.' };
+        if (error.code === 'UNAUTHORIZED') logout();
+        return { error: error.message || '네트워크 오류가 발생했습니다.', code: error.code, data: error.data };
       }
     }
 
     async function loadAppData() {
       const data = await fetchAPI('getInitialAppData');
-      if (data.error) {
-        showToast(`데이터 로딩 실패: ${data.error}`);
-        if (data.error.includes('비밀번호')) lockApp();
-        return;
-      }
+      if (data.error) return showToast(`데이터 로딩 실패: ${data.error}`);
       applyAppData(data);
     }
 
     function applyAppData(data) {
+      if (data.user) {
+        authUser = data.user;
+        sessionStorage.setItem(USER_KEY, JSON.stringify(authUser));
+      }
       allSheetData = data;
       currentHistory = data.history || [];
+      updateUserLabel();
       updateSheetSelect(data);
       updatePage(data);
       renderHistory();
     }
 
+    function updateUserLabel() {
+      $('#user-label').textContent = authUser ? `${authUser.displayName} (${authUser.username})` : '';
+    }
+
     async function changeSheet() {
       const sheetName = $('#sheet-select').value;
       if (!sheetName) return;
-
       const data = await fetchAPI('getSheetData', { sheetName });
-      if (data.error) {
-        showToast(`시트 로딩 실패: ${data.error}`);
-        return;
-      }
-
-      allSheetData = {
-        ...allSheetData,
-        ...data,
-        currentSheet: sheetName,
-      };
-      currentHistory = data.history || currentHistory;
-      updatePage(allSheetData);
-      renderHistory();
+      if (data.error) return showToast(`시트 로딩 실패: ${data.error}`);
+      applyAppData({ ...allSheetData, ...data, currentSheet: sheetName });
     }
 
     function updateSheetSelect(data) {
       const sheetSelect = $('#sheet-select');
       sheetSelect.innerHTML = '';
-
       if (!data.sheetNames || !data.sheetNames.length) {
         sheetSelect.innerHTML = '<option value="">월 시트 없음</option>';
         return;
       }
-
       data.sheetNames.forEach((name) => {
         const option = document.createElement('option');
         option.value = name;
@@ -503,9 +559,11 @@
       updateSummary(data.summary);
       currentSheetRecords = data.records || {};
       renderAfterSchoolChips(data.afterSchool || []);
+      updateLockUi();
       setDefaultDateFromSheet();
       loadDateDetail();
       renderCalendar();
+      renderSelectedDateDetail();
     }
 
     function updateSummary(summary = {}) {
@@ -514,11 +572,17 @@
       $('#sum-pay').textContent = summary.totalPay ? `₩ ${summary.totalPay}` : '₩ 0';
     }
 
+    function updateLockUi() {
+      const locked = Boolean(allSheetData.locked);
+      $('#lock-toggle-btn').textContent = locked ? '해제' : '마감';
+      $('#lock-label').textContent = locked ? '마감된 월입니다. 저장 시 비밀번호 재입력이 필요합니다.' : '수정 가능한 월입니다.';
+      $('#lock-label').className = `mt-2 text-sm font-semibold ${locked ? 'text-[#ff3b30]' : 'text-[#6e6e73]'}`;
+    }
+
     function renderAfterSchoolChips(afterSchool) {
       const container = $('#afterschool-container');
       container.innerHTML = '';
       currentAfterSchoolState = afterSchool.map((item) => item.isSelected);
-
       afterSchool.forEach((item, index) => {
         const chip = document.createElement('button');
         chip.type = 'button';
@@ -536,6 +600,10 @@
       return `h-10 rounded-lg text-sm font-bold transition ${active ? 'bg-[#1d1d1f] text-white' : 'border border-[#d2d2d7] bg-[#f5f5f7] text-[#1d1d1f]'}`;
     }
 
+    function renderReasonButtons() {
+      $('#reason-buttons').innerHTML = REASONS.map((reason) => `<button type="button" class="rounded-full border border-[#d2d2d7] px-3 py-1.5 text-sm font-semibold text-[#1d1d1f]" data-reason="${reason}">${reason}</button>`).join('');
+    }
+
     function setDefaultDateFromSheet() {
       const sheetName = $('#sheet-select').value;
       const now = new Date();
@@ -543,13 +611,11 @@
       let month = now.getMonth() + 1;
       let day = now.getDate();
       const parts = sheetName.split('-');
-
       if (parts.length === 2) {
         year = Number(parts[0]) + 2000;
         month = Number(parts[1]);
         if (year !== now.getFullYear() || month !== now.getMonth() + 1) day = 1;
       }
-
       $('#date-input').value = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     }
 
@@ -559,7 +625,6 @@
       const now = new Date();
       const currentTime = toTimeValue(now);
       const isAM = now.getHours() < 12;
-
       if (detail) {
         $('#start-time').value = formatTimeInput(detail.startTime) || (isAM ? currentTime : '');
         $('#end-time').value = formatTimeInput(detail.endTime) || (!isAM ? currentTime : '');
@@ -568,7 +633,6 @@
         else hideResult();
         return;
       }
-
       $('#start-time').value = isAM ? currentTime : '';
       $('#end-time').value = !isAM ? currentTime : '';
       $('#memo-input').value = '';
@@ -587,9 +651,14 @@
     }
 
     function handleDocumentClick(event) {
+      const reasonButton = event.target.closest('[data-reason]');
+      if (reasonButton) appendReason(reasonButton.dataset.reason);
+
+      const tabButton = event.target.closest('[data-tab]');
+      if (tabButton) switchTab(tabButton.dataset.tab);
+
       const button = event.target.closest('[data-action]');
       if (!button) return;
-
       const action = button.dataset.action;
       if (action === 'save-days') saveAfterSchool();
       if (action === 'save-overtime') submitOvertime();
@@ -601,61 +670,37 @@
       if (action === 'open-new-sheet') showModal();
       if (action === 'close-new-sheet') hideModal();
       if (action === 'create-sheet') confirmCreateSheet();
+      if (action === 'toggle-lock') toggleMonthLock();
+      if (action === 'edit-selected-date') editSelectedDate();
     }
 
-    document.addEventListener('click', (event) => {
-      const tabButton = event.target.closest('[data-tab]');
-      if (!tabButton) return;
-      switchTab(tabButton.dataset.tab);
-    });
+    function appendReason(reason) {
+      const memo = $('#memo-input');
+      const parts = memo.value.split(',').map((item) => item.trim()).filter(Boolean);
+      if (!parts.includes(reason)) parts.push(reason);
+      memo.value = parts.join(', ');
+      memo.focus();
+    }
 
     function switchTab(tab) {
       const isRecord = tab === 'record';
       $('#tab-record').classList.toggle('active', isRecord);
       $('#tab-view').classList.toggle('active', !isRecord);
-      $('#content-record').classList.toggle('hidden', !isRecord);
-      $('#content-view').classList.toggle('hidden', isRecord);
+      $('#content-record').classList.toggle('active', isRecord);
+      $('#content-view').classList.toggle('active', !isRecord);
       if (!isRecord) renderCalendar();
     }
 
-    async function submitOvertime(source = 'manual') {
+    async function submitOvertime(source = 'manual', overridePassword = '') {
       const sheetName = $('#sheet-select').value;
       const dateText = parseDateInput($('#date-input').value);
-      if (!sheetName || !dateText) {
-        showToast('시트와 날짜를 확인해 주세요.');
-        return;
-      }
-
-      const button = $('#btn-submit');
-      const originalHtml = button.innerHTML;
-      button.disabled = true;
-      button.innerHTML = '<div class="loading-spinner"></div>';
-      button.classList.remove('error-state', 'animate-shake');
-
-      const data = await fetchAPI('saveOvertime', {
-        sheetName,
-        dateText,
-        startTime: $('#start-time').value,
-        endTime: $('#end-time').value,
-        memo: $('#memo-input').value.trim(),
-        source,
-      });
-
-      button.disabled = false;
-      button.innerHTML = originalHtml;
-
-      if (!data.success) {
-        showButtonError(button, '기록 저장하기');
-        showToast(data.message || data.error || '저장에 실패했습니다.');
-        return;
-      }
-
-      allSheetData = { ...allSheetData, ...data, currentSheet: sheetName };
-      currentSheetRecords = data.records || {};
-      currentHistory = data.history || currentHistory;
-      updateSummary(data.summary);
-      renderCalendar();
-      renderHistory();
+      if (!sheetName || !dateText) return showToast('시트와 날짜를 확인해 주세요.');
+      const payload = { sheetName, dateText, startTime: $('#start-time').value, endTime: $('#end-time').value, memo: $('#memo-input').value.trim(), source };
+      if (overridePassword) payload.overridePassword = overridePassword;
+      const data = await fetchAPI('saveOvertime', payload);
+      if (data.code === 'MONTH_LOCKED') return retryWithPassword((password) => submitOvertime(source, password));
+      if (!data.success) return showToast(data.message || data.error || '저장에 실패했습니다.');
+      applyAppData({ ...allSheetData, ...data, currentSheet: sheetName });
       showResult(currentSheetRecords[dateText] || {});
       showToast('저장했습니다.');
     }
@@ -666,79 +711,65 @@
       const dateText = parseDateInput($('#date-input').value);
       const existing = currentSheetRecords[dateText] || {};
       const currentTime = toTimeValue(now);
-
       $('#start-time').value = kind === 'start' ? currentTime : formatTimeInput(existing.startTime);
       $('#end-time').value = kind === 'end' ? currentTime : formatTimeInput(existing.endTime);
       $('#memo-input').value = existing.memo || $('#memo-input').value;
-
       await submitOvertime(kind === 'start' ? 'quick-start' : 'quick-end');
     }
 
-    async function saveAfterSchool() {
+    async function saveAfterSchool(overridePassword = '') {
       const sheetName = $('#sheet-select').value;
       if (!sheetName) return;
-
-      const button = $('#btn-save-days');
-      const originalText = button.textContent;
-      button.disabled = true;
-      button.textContent = '...';
-
-      const data = await fetchAPI('saveAfterSchoolSettings', {
-        sheetName,
-        settings: currentAfterSchoolState,
-      });
-
-      button.disabled = false;
-      button.textContent = originalText;
-
-      if (!data.success) {
-        showButtonError(button, originalText);
-        showToast(data.message || data.error || '저장에 실패했습니다.');
-        return;
-      }
-
-      allSheetData = { ...allSheetData, ...data, currentSheet: sheetName };
-      currentSheetRecords = data.records || {};
-      currentHistory = data.history || currentHistory;
-      updateSummary(data.summary);
-      renderCalendar();
-      renderHistory();
+      const payload = { sheetName, settings: currentAfterSchoolState };
+      if (overridePassword) payload.overridePassword = overridePassword;
+      const data = await fetchAPI('saveAfterSchoolSettings', payload);
+      if (data.code === 'MONTH_LOCKED') return retryWithPassword((password) => saveAfterSchool(password));
+      if (!data.success) return showToast(data.message || data.error || '저장에 실패했습니다.');
+      applyAppData({ ...allSheetData, ...data, currentSheet: sheetName });
       showToast('방과후 요일을 저장했습니다.');
     }
 
     async function confirmCreateSheet() {
       const targetName = $('#newSheetName').value.trim();
       if (!targetName) return;
-
-      const button = $('#btn-create-sheet');
-      const originalText = button.textContent;
-      button.disabled = true;
-      button.innerHTML = '<div class="mx-auto loading-spinner"></div>';
-
       const data = await fetchAPI('createNewMonthSheet', { targetName });
-      button.disabled = false;
-      button.textContent = originalText;
-
-      if (!data.success) {
-        showButtonError(button, originalText);
-        showToast(data.message || data.error || '시트 생성에 실패했습니다.');
-        return;
-      }
-
+      if (!data.success) return showToast(data.message || data.error || '시트 생성에 실패했습니다.');
       hideModal();
       $('#newSheetName').value = '';
       applyAppData(data);
       showToast(`${data.newSheetName} 시트를 만들었습니다.`);
     }
 
+    async function toggleMonthLock() {
+      const sheetName = $('#sheet-select').value;
+      if (!sheetName) return;
+      if (allSheetData.locked) {
+        const password = window.prompt('마감 해제를 위해 비밀번호를 다시 입력해 주세요.');
+        if (!password) return;
+        const data = await fetchAPI('unlockMonth', { sheetName, password });
+        if (!data.success) return showToast(data.error || '마감 해제에 실패했습니다.');
+        applyAppData(data);
+        showToast('마감을 해제했습니다.');
+      } else {
+        const data = await fetchAPI('lockMonth', { sheetName });
+        if (!data.success) return showToast(data.error || '마감에 실패했습니다.');
+        applyAppData(data);
+        showToast('월을 마감했습니다.');
+      }
+    }
+
+    function retryWithPassword(callback) {
+      const password = window.prompt('마감된 월입니다. 수정하려면 비밀번호를 입력해 주세요.');
+      if (!password) return;
+      callback(password);
+    }
+
     async function refreshHistory() {
       const data = await fetchAPI('getHistory');
-      if (data.error) {
-        showToast(`이력 로딩 실패: ${data.error}`);
-        return;
-      }
+      if (data.error) return showToast(`이력 로딩 실패: ${data.error}`);
       currentHistory = data.history || [];
       renderHistory();
+      renderSelectedDateDetail();
       showToast('수정 이력을 새로고침했습니다.');
     }
 
@@ -746,24 +777,20 @@
       const sheetName = $('#sheet-select').value;
       const calendarBody = $('#calendar-body');
       if (!calendarBody || !sheetName || !sheetName.includes('-')) return;
-
       const [yy, monthText] = sheetName.split('-');
       const year = Number(yy) + 2000;
       const month = Number(monthText);
       $('#calendar-title').textContent = `${year}년 ${month}월`;
       calendarBody.innerHTML = '';
-
       const firstDay = new Date(year, month - 1, 1).getDay();
       const lastDate = new Date(year, month, 0).getDate();
       const prevMonthLastDate = new Date(year, month - 1, 0).getDate();
-
       for (let index = firstDay - 1; index >= 0; index -= 1) {
         const div = document.createElement('div');
         div.className = 'calendar-day not-month';
         div.innerHTML = `<span class="text-sm">${prevMonthLastDate - index}</span>`;
         calendarBody.appendChild(div);
       }
-
       const now = new Date();
       for (let day = 1; day <= lastDate; day += 1) {
         const dateKey = `${month}월${day}일`;
@@ -771,83 +798,108 @@
         const dayOfWeek = new Date(year, month - 1, day).getDay();
         const div = document.createElement('button');
         div.type = 'button';
-        div.className = 'calendar-day';
-
-        if (now.getFullYear() === year && now.getMonth() + 1 === month && now.getDate() === day) {
-          div.classList.add('today');
-        }
-
+        div.className = `calendar-day ${selectedDateKey === dateKey ? 'selected' : ''}`;
+        if (now.getFullYear() === year && now.getMonth() + 1 === month && now.getDate() === day) div.classList.add('today');
         const dayColor = dayOfWeek === 0 ? 'text-[#ff3b30]' : dayOfWeek === 6 ? 'text-[#0066cc]' : 'text-[#1d1d1f]';
         let content = `<span class="text-base font-bold ${dayColor}">${day}</span>`;
-
         if (record) {
           content += '<div class="mt-1.5 flex gap-1">';
           if (record.morningExtra && record.morningExtra !== '0:00') content += '<span class="h-1.5 w-1.5 rounded-full bg-[#ff9500]"></span>';
           if (record.afternoonExtra && record.afternoonExtra !== '0:00') content += '<span class="h-1.5 w-1.5 rounded-full bg-[#0066cc]"></span>';
           if (record.memo) content += '<span class="h-1.5 w-1.5 rounded-full bg-[#34c759]"></span>';
           content += '</div>';
-          if (record.dailyTotal && record.dailyTotal !== '0:00') {
-            content += `<span class="mt-1 text-xs font-bold">${escapeHtml(record.dailyTotal)}</span>`;
-          }
+          if (record.dailyTotal && record.dailyTotal !== '0:00') content += `<span class="mt-1 text-xs font-bold">${escapeHtml(record.dailyTotal)}</span>`;
         }
-
         div.innerHTML = content;
         div.addEventListener('click', () => {
-          $('#date-input').value = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          switchTab('record');
-          loadDateDetail();
+          selectedDateKey = dateKey;
+          renderCalendar();
+          renderSelectedDateDetail();
         });
         calendarBody.appendChild(div);
       }
     }
 
+    function renderSelectedDateDetail() {
+      const container = $('#date-detail');
+      if (!selectedDateKey) {
+        container.innerHTML = '<p class="text-sm font-semibold text-[#6e6e73]">날짜를 선택하세요.</p>';
+        return;
+      }
+      const record = currentSheetRecords[selectedDateKey] || {};
+      const dateHistory = currentHistory.filter((item) => item.sheetName === $('#sheet-select').value && item.dateText === selectedDateKey);
+      container.innerHTML = `
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <p class="text-sm font-semibold text-[#6e6e73]">${escapeHtml($('#sheet-select').value)} 시트</p>
+            <h2 class="text-2xl font-bold">${escapeHtml(selectedDateKey)}</h2>
+          </div>
+          <button class="rounded-full bg-[#0066cc] px-4 py-2 text-sm font-semibold text-white" type="button" data-action="edit-selected-date">수정</button>
+        </div>
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          ${detailMetric('시작', record.startTime || '-')}
+          ${detailMetric('종료', record.endTime || '-')}
+          ${detailMetric('아침', record.morningExtra || '0:00')}
+          ${detailMetric('오후', record.afternoonExtra || '0:00')}
+          ${detailMetric('일계', record.dailyTotal || '0:00')}
+          ${detailMetric('메모', record.memo || '-')}
+        </div>
+        <div class="mt-5">
+          <h3 class="mb-2 text-sm font-bold text-[#6e6e73]">이 날짜의 수정 이력</h3>
+          ${dateHistory.length ? dateHistory.slice(0, 5).map(historyCard).join('') : '<p class="text-sm text-[#6e6e73]">수정 이력이 없습니다.</p>'}
+        </div>
+      `;
+    }
+
+    function detailMetric(label, value) {
+      return `<div class="rounded-lg bg-[#f5f5f7] p-3"><span class="text-xs font-bold text-[#6e6e73]">${label}</span><strong class="mt-1 block">${escapeHtml(value)}</strong></div>`;
+    }
+
+    function editSelectedDate() {
+      if (!selectedDateKey) return;
+      const sheetName = $('#sheet-select').value;
+      const [yy, monthText] = sheetName.split('-');
+      const day = Number(selectedDateKey.replace(/^\d+월/, '').replace('일', ''));
+      $('#date-input').value = `${Number(yy) + 2000}-${String(Number(monthText)).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      loadDateDetail();
+      switchTab('record');
+    }
+
     function renderHistory() {
       const historyList = $('#history-list');
       if (!historyList) return;
-
       if (!currentHistory.length) {
         historyList.innerHTML = '<p class="text-sm text-[#6e6e73]">아직 기록된 수정 이력이 없습니다.</p>';
         return;
       }
+      historyList.innerHTML = currentHistory.slice(0, 12).map(historyCard).join('');
+    }
 
-      historyList.innerHTML = currentHistory.slice(0, 12).map((item) => `
-        <article class="rounded-lg border border-[#e0e0e0] bg-[#f5f5f7] p-3">
+    function historyCard(item) {
+      return `
+        <article class="mb-2 rounded-lg border border-[#e0e0e0] bg-[#f5f5f7] p-3">
           <div class="flex items-start justify-between gap-3">
             <strong class="text-sm">${escapeHtml(item.action || '-')}</strong>
             <span class="shrink-0 text-xs text-[#6e6e73]">${escapeHtml(item.timestamp || '')}</span>
           </div>
-          <p class="mt-1 text-sm text-[#1d1d1f]">${escapeHtml([item.sheetName, item.dateText].filter(Boolean).join(' · '))}</p>
-          <p class="mt-1 line-clamp-2 text-xs text-[#6e6e73]">${escapeHtml(item.detail || item.memo || '')}</p>
+          <p class="mt-1 text-sm">${escapeHtml([item.sheetName, item.dateText].filter(Boolean).join(' · '))}</p>
+          <p class="mt-1 text-xs text-[#6e6e73]">${escapeHtml(item.detail || item.memo || '')}</p>
         </article>
-      `).join('');
+      `;
     }
 
     function buildExportRows() {
       const sheetName = $('#sheet-select').value;
-      const dates = allSheetData.dates || [];
-      return dates.map((date) => {
+      return (allSheetData.dates || []).map((date) => {
         const key = date.key || normalizeDate(date.dateText);
         const record = currentSheetRecords[key] || {};
-        return {
-          sheetName,
-          dateText: date.dateText,
-          startTime: record.startTime || '',
-          endTime: record.endTime || '',
-          morningExtra: record.morningExtra || '0:00',
-          afternoonExtra: record.afternoonExtra || '0:00',
-          dailyTotal: record.dailyTotal || '0:00',
-          memo: record.memo || '',
-        };
+        return { sheetName, dateText: date.dateText, startTime: record.startTime || '', endTime: record.endTime || '', morningExtra: record.morningExtra || '0:00', afternoonExtra: record.afternoonExtra || '0:00', dailyTotal: record.dailyTotal || '0:00', memo: record.memo || '' };
       });
     }
 
     function downloadMonthCsv() {
       const rows = buildExportRows();
-      if (!rows.length) {
-        showToast('내보낼 데이터가 없습니다.');
-        return;
-      }
-
+      if (!rows.length) return showToast('내보낼 데이터가 없습니다.');
       const header = ['월', '날짜', '시작', '종료', '아침 초과', '오후 초과', '일계', '메모'];
       const csvRows = rows.map((row) => [row.sheetName, row.dateText, row.startTime, row.endTime, row.morningExtra, row.afternoonExtra, row.dailyTotal, row.memo]);
       const csv = [header, ...csvRows].map((row) => row.map(csvEscape).join(',')).join('\n');
@@ -864,32 +916,12 @@
 
     function printMonthReport() {
       const rows = buildExportRows();
-      if (!rows.length) {
-        showToast('인쇄할 데이터가 없습니다.');
-        return;
-      }
-
+      if (!rows.length) return showToast('인쇄할 데이터가 없습니다.');
       $('#print-root').innerHTML = `
         <h1>초과근무 월별 보고서</h1>
         <h2>${escapeHtml($('#sheet-select').value)} 시트</h2>
-        <table>
-          <thead>
-            <tr><th>날짜</th><th>시작</th><th>종료</th><th>아침</th><th>오후</th><th>일계</th><th>메모</th></tr>
-          </thead>
-          <tbody>
-            ${rows.map((row) => `
-              <tr>
-                <td>${escapeHtml(row.dateText)}</td>
-                <td>${escapeHtml(row.startTime)}</td>
-                <td>${escapeHtml(row.endTime)}</td>
-                <td>${escapeHtml(row.morningExtra)}</td>
-                <td>${escapeHtml(row.afternoonExtra)}</td>
-                <td>${escapeHtml(row.dailyTotal)}</td>
-                <td>${escapeHtml(row.memo)}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
+        <table><thead><tr><th>날짜</th><th>시작</th><th>종료</th><th>아침</th><th>오후</th><th>일계</th><th>메모</th></tr></thead>
+        <tbody>${rows.map((row) => `<tr><td>${escapeHtml(row.dateText)}</td><td>${escapeHtml(row.startTime)}</td><td>${escapeHtml(row.endTime)}</td><td>${escapeHtml(row.morningExtra)}</td><td>${escapeHtml(row.afternoonExtra)}</td><td>${escapeHtml(row.dailyTotal)}</td><td>${escapeHtml(row.memo)}</td></tr>`).join('')}</tbody></table>
       `;
       document.body.classList.add('printing');
       window.print();
@@ -907,16 +939,6 @@
       $('#newSheetModal').classList.remove('flex');
     }
 
-    function showButtonError(button, text) {
-      button.disabled = false;
-      button.textContent = '오류 발생';
-      button.classList.add('error-state', 'animate-shake');
-      setTimeout(() => {
-        button.classList.remove('error-state', 'animate-shake');
-        button.textContent = text;
-      }, 1400);
-    }
-
     function showToast(message) {
       const toast = $('#toast');
       toast.textContent = message;
@@ -927,8 +949,8 @@
 
     function parseDateInput(value) {
       if (!value) return '';
-      const [year, month, day] = value.split('-');
-      if (!year || !month || !day) return '';
+      const [, month, day] = value.split('-');
+      if (!month || !day) return '';
       return `${Number(month)}월${Number(day)}일`;
     }
 
@@ -960,19 +982,12 @@
     }
 
     function escapeHtml(value) {
-      return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+      return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
 
     function registerServiceWorker() {
       if (!('serviceWorker' in navigator)) return;
-      navigator.serviceWorker.register('/sw.js').catch((error) => {
-        console.warn('Service worker registration failed:', error);
-      });
+      navigator.serviceWorker.register('/sw.js').catch((error) => console.warn('Service worker registration failed:', error));
     }
   </script>
 </body>
