@@ -6,6 +6,9 @@ const DB_SHEET_NAME = process.env.DB_SHEET_NAME || '통합DB';
 const HISTORY_SHEET_NAME = process.env.HISTORY_SHEET_NAME || '수정이력';
 const USERS_SHEET_NAME = process.env.USERS_SHEET_NAME || '사용자';
 const LOCKS_SHEET_NAME = process.env.LOCKS_SHEET_NAME || '월마감';
+const DEFAULT_AFTER_SCHOOL_DEDUCTION_MINUTES = 50;
+const STANDARD_START_MINUTES = parseTimeToMinutes(process.env.STANDARD_START_TIME || '08:30') ?? 510;
+const STANDARD_END_MINUTES = parseTimeToMinutes(process.env.STANDARD_END_TIME || '16:30') ?? 990;
 
 const INTERNAL_SHEETS = new Set([
   TEMPLATE_SHEET_NAME,
@@ -162,13 +165,16 @@ async function saveOvertime(sheets, spreadsheetId, user, body) {
   const startTime = body.startTime || '';
   const endTime = body.endTime || '';
   const memo = body.memo || '';
+  const config = await getAfterSchoolConfig(sheets, spreadsheetId, physicalSheet);
+  const afterSchoolOverride = normalizeAfterSchoolOverride(body.afterSchoolOverride ?? target.row[8] ?? '');
+  const afterSchoolApplied = isAfterSchoolApplied(afterSchoolOverride, body.dateText, physicalSheet, config.settings);
+  const computed = calculateOvertimeFields(startTime, endTime, afterSchoolApplied, config.deductionMinutes);
   await sheets.spreadsheets.values.batchUpdate({
     spreadsheetId,
     requestBody: {
       valueInputOption: 'USER_ENTERED',
       data: [
-        { range: `${quoteSheetName(physicalSheet)}!C${target.rowNumber}:D${target.rowNumber}`, values: [[startTime, endTime]] },
-        { range: `${quoteSheetName(physicalSheet)}!H${target.rowNumber}:H${target.rowNumber}`, values: [[memo]] },
+        { range: `${quoteSheetName(physicalSheet)}!C${target.rowNumber}:I${target.rowNumber}`, values: [[startTime, endTime, computed.morningExtra, computed.afternoonExtra, computed.dailyTotal, memo, afterSchoolOverride]] },
       ],
     },
   });
@@ -179,7 +185,7 @@ async function saveOvertime(sheets, spreadsheetId, user, body) {
     startTime,
     endTime,
     memo,
-    detail: formatChangeDetail(target.row, { startTime, endTime, memo }),
+    detail: `${formatChangeDetail(target.row, { startTime, endTime, memo })}, 방과후 ${afterSchoolApplied ? `${config.deductionMinutes}분 차감` : '없음'}`,
   });
   return { body: { success: true, ...(await buildAppData(sheets, spreadsheetId, user, body.sheetName)) } };
 }
@@ -187,22 +193,30 @@ async function saveOvertime(sheets, spreadsheetId, user, body) {
 async function saveAfterSchoolSettings(sheets, spreadsheetId, user, body) {
   requireField(body.sheetName, '시트 이름이 없습니다.');
   if (!Array.isArray(body.settings)) return { status: 400, body: { success: false, message: '방과후 요일 설정 값이 올바르지 않습니다.' } };
+  const settings = WEEKDAYS.map((_, index) => Boolean(body.settings[index]));
+  const deductionMinutes = normalizeDeductionMinutes(body.deductionMinutes);
   const meta = await getSheetMeta(sheets, spreadsheetId);
   const physicalSheet = resolvePhysicalSheetName(user, body.sheetName, meta.sheetNames);
   if (!physicalSheet) return { status: 404, body: { success: false, message: '시트를 찾을 수 없습니다.' } };
   const lockCheck = await requireUnlockedOrOverride(sheets, spreadsheetId, user, body.sheetName, body.overridePassword);
   if (!lockCheck.ok) return lockCheck;
 
-  await sheets.spreadsheets.values.update({
+  await sheets.spreadsheets.values.batchUpdate({
     spreadsheetId,
-    range: `${quoteSheetName(physicalSheet)}!L2:L8`,
-    valueInputOption: 'USER_ENTERED',
-    requestBody: { values: body.settings.slice(0, 7).map((item) => [item ? 'O' : '']) },
+    requestBody: {
+      valueInputOption: 'USER_ENTERED',
+      data: [
+        { range: `${quoteSheetName(physicalSheet)}!I1`, values: [['방과후']] },
+        { range: `${quoteSheetName(physicalSheet)}!L2:L8`, values: settings.map((item) => [item ? 'O' : '']) },
+        { range: `${quoteSheetName(physicalSheet)}!M1:M2`, values: [['방과후 차감(분)'], [deductionMinutes]] },
+      ],
+    },
   });
+  await refreshCalculatedRows(sheets, spreadsheetId, physicalSheet, settings, deductionMinutes);
   await appendHistory(sheets, spreadsheetId, user, {
-    action: '방과후 요일 저장',
+    action: '방과후 설정 저장',
     sheetName: body.sheetName,
-    detail: body.settings.map((checked, index) => `${WEEKDAYS[index] || index + 1}:${checked ? 'O' : '-'}`).join(', '),
+    detail: `${settings.map((checked, index) => `${WEEKDAYS[index] || index + 1}:${checked ? 'O' : '-'}`).join(', ')}, 차감 ${deductionMinutes}분`,
   });
   return { body: { success: true, ...(await buildAppData(sheets, spreadsheetId, user, body.sheetName)) } };
 }
@@ -273,33 +287,66 @@ async function requireUnlockedOrOverride(sheets, spreadsheetId, user, sheetName,
 }
 
 async function getSheetData(sheets, spreadsheetId, physicalSheetName) {
-  const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${quoteSheetName(physicalSheetName)}!A:L`, valueRenderOption: 'FORMATTED_VALUE' });
+  const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${quoteSheetName(physicalSheetName)}!A:M`, valueRenderOption: 'FORMATTED_VALUE' });
   const rows = response.data.values || [];
   const summary = { totalHours: rows[1]?.[9] || '', approvedHours: rows[2]?.[9] || '', hourlyRate: rows[3]?.[9] || '', totalPay: rows[4]?.[9] || '' };
+  const afterSchool = getAfterSchoolSettingsFromRows(rows);
+  const defaultSettings = afterSchool.map((item) => item.isSelected);
+  const afterSchoolDeductionMinutes = normalizeDeductionMinutes(rows[1]?.[12]);
   const dates = [];
   const records = {};
-  const afterSchool = [];
   for (let index = 1; index < rows.length; index += 1) {
     const row = rows[index] || [];
     const displayDate = row[0] || '';
-    if (!displayDate || displayDate.includes('날짜') || !displayDate.trim()) continue;
+    if (!isDateText(displayDate)) continue;
     const normalizedDate = normalizeDate(displayDate);
-    const record = { dateText: displayDate, startTime: row[2] || '', endTime: row[3] || '', morningExtra: row[4] || '0:00', afternoonExtra: row[5] || '0:00', dailyTotal: row[6] || '0:00', memo: row[7] || '' };
-    dates.push({ dateText: displayDate, key: normalizedDate });
+    const afterSchoolOverride = normalizeAfterSchoolOverride(row[8] || '');
+    const afterSchoolApplied = isAfterSchoolApplied(afterSchoolOverride, displayDate, physicalSheetName, defaultSettings);
+    const record = { dateText: displayDate, startTime: row[2] || '', endTime: row[3] || '', morningExtra: row[4] || '0:00', afternoonExtra: row[5] || '0:00', dailyTotal: row[6] || '0:00', memo: row[7] || '', afterSchoolOverride, afterSchoolApplied };
+    dates.push({ dateText: displayDate, key: normalizedDate, afterSchoolApplied });
     records[normalizedDate] = record;
   }
-  for (let index = 1; index < 8; index += 1) afterSchool.push({ day: rows[index]?.[10] || WEEKDAYS[index - 1], isSelected: rows[index]?.[11] === 'O' });
-  return { summary, dates, afterSchool, records };
+  return { summary, dates, afterSchool, afterSchoolDeductionMinutes, records };
 }
 
 async function findDateRow(sheets, spreadsheetId, physicalSheetName, dateText) {
-  const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${quoteSheetName(physicalSheetName)}!A:H`, valueRenderOption: 'FORMATTED_VALUE' });
+  const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${quoteSheetName(physicalSheetName)}!A:I`, valueRenderOption: 'FORMATTED_VALUE' });
   const rows = response.data.values || [];
   const targetDate = normalizeDate(dateText);
   for (let index = 1; index < rows.length; index += 1) {
     if (normalizeDate(rows[index]?.[0] || '') === targetDate) return { rowNumber: index + 1, row: rows[index] || [] };
   }
   return null;
+}
+
+async function getAfterSchoolConfig(sheets, spreadsheetId, physicalSheetName) {
+  const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${quoteSheetName(physicalSheetName)}!K1:M8`, valueRenderOption: 'FORMATTED_VALUE' });
+  const rows = response.data.values || [];
+  const settings = WEEKDAYS.map((_, index) => rows[index + 1]?.[1] === 'O');
+  const deductionMinutes = normalizeDeductionMinutes(rows[1]?.[2]);
+  return { settings, deductionMinutes };
+}
+
+function getAfterSchoolSettingsFromRows(rows) {
+  return WEEKDAYS.map((day, index) => ({ day: rows[index + 1]?.[10] || day, isSelected: rows[index + 1]?.[11] === 'O' }));
+}
+
+async function refreshCalculatedRows(sheets, spreadsheetId, physicalSheetName, settings, deductionMinutes) {
+  const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${quoteSheetName(physicalSheetName)}!A2:I`, valueRenderOption: 'FORMATTED_VALUE' });
+  const rows = response.data.values || [];
+  const data = rows
+    .map((row, index) => ({ row, rowNumber: index + 2 }))
+    .filter(({ row }) => isDateText(row[0]))
+    .map(({ row, rowNumber }) => {
+      const afterSchoolApplied = isAfterSchoolApplied(row[8] || '', row[0], physicalSheetName, settings);
+      const computed = calculateOvertimeFields(row[2] || '', row[3] || '', afterSchoolApplied, deductionMinutes);
+      return { range: `${quoteSheetName(physicalSheetName)}!E${rowNumber}:G${rowNumber}`, values: [[computed.morningExtra, computed.afternoonExtra, computed.dailyTotal]] };
+    });
+  if (!data.length) return;
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId,
+    requestBody: { valueInputOption: 'USER_ENTERED', data },
+  });
 }
 
 async function getHistoryRows(sheets, spreadsheetId, user) {
@@ -474,7 +521,7 @@ function pickDefaultSheet(sheetNames, requestedName) {
 }
 
 function emptySheetData() {
-  return { summary: { totalHours: '', approvedHours: '', hourlyRate: '', totalPay: '' }, dates: [], afterSchool: WEEKDAYS.map((day) => ({ day, isSelected: false })), records: {} };
+  return { summary: { totalHours: '', approvedHours: '', hourlyRate: '', totalPay: '' }, dates: [], afterSchool: WEEKDAYS.map((day) => ({ day, isSelected: false })), afterSchoolDeductionMinutes: DEFAULT_AFTER_SCHOOL_DEDUCTION_MINUTES, records: {} };
 }
 
 function validateNewUser(username, displayName, password, recoveryCode) {
@@ -575,6 +622,98 @@ function quoteSheetName(name) {
 
 function normalizeDate(value) {
   return String(value || '').replace(/\s+/g, '');
+}
+
+function isDateText(value) {
+  const text = String(value || '').trim();
+  return Boolean(text && !text.includes('날짜') && parseMonthDay(text));
+}
+
+function normalizeAfterSchoolOverride(value) {
+  if (value === true) return 'O';
+  if (value === false) return 'X';
+  const text = String(value ?? '').trim().toUpperCase();
+  if (['O', 'Y', 'TRUE', '1', 'YES'].includes(text)) return 'O';
+  if (['X', 'N', 'FALSE', '0', 'NO'].includes(text)) return 'X';
+  return '';
+}
+
+function normalizeDeductionMinutes(value) {
+  const text = String(value ?? '').replace(/[^\d.-]/g, '');
+  if (!text) return DEFAULT_AFTER_SCHOOL_DEDUCTION_MINUTES;
+  const minutes = Number(text);
+  if (!Number.isFinite(minutes)) return DEFAULT_AFTER_SCHOOL_DEDUCTION_MINUTES;
+  return Math.max(0, Math.min(240, Math.round(minutes)));
+}
+
+function isAfterSchoolApplied(override, dateText, physicalSheetName, defaultSettings) {
+  const normalizedOverride = normalizeAfterSchoolOverride(override);
+  if (normalizedOverride === 'O') return true;
+  if (normalizedOverride === 'X') return false;
+  const weekdayIndex = getWeekdayIndex(dateText, physicalSheetName);
+  return weekdayIndex >= 0 ? Boolean(defaultSettings[weekdayIndex]) : false;
+}
+
+function getWeekdayIndex(dateText, physicalSheetName) {
+  const parts = parseMonthDay(dateText);
+  const monthSheet = parseMonthSheetName(physicalSheetName);
+  if (!parts || !monthSheet) return -1;
+  const year = monthSheet.year;
+  const date = new Date(year, parts.month - 1, parts.day);
+  if (Number.isNaN(date.getTime())) return -1;
+  return (date.getDay() + 6) % 7;
+}
+
+function parseMonthDay(value) {
+  const text = String(value || '').trim();
+  const korean = text.match(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/);
+  if (korean) return validMonthDay(Number(korean[1]), Number(korean[2]));
+  const numeric = text.match(/(?:\d{2,4}\D+)?(\d{1,2})\D+(\d{1,2})/);
+  if (numeric) return validMonthDay(Number(numeric[1]), Number(numeric[2]));
+  return null;
+}
+
+function validMonthDay(month, day) {
+  return month >= 1 && month <= 12 && day >= 1 && day <= 31 ? { month, day } : null;
+}
+
+function parseMonthSheetName(value) {
+  const match = String(value || '').match(/(?:^|__)(\d{2}|\d{4})-(\d{1,2})$/);
+  if (!match) return null;
+  const shortYear = Number(match[1].slice(-2));
+  const fullYear = match[1].length === 4 ? Number(match[1]) : 2000 + shortYear;
+  const month = Number(match[2]);
+  return Number.isInteger(month) && month >= 1 && month <= 12 ? { year: fullYear, month } : null;
+}
+
+function calculateOvertimeFields(startTime, endTime, afterSchoolApplied, deductionMinutes) {
+  const startMinutes = parseTimeToMinutes(startTime);
+  const endMinutes = parseTimeToMinutes(endTime);
+  const morningMinutes = startMinutes === null ? 0 : Math.max(0, STANDARD_START_MINUTES - startMinutes);
+  const rawAfternoonMinutes = endMinutes === null ? 0 : Math.max(0, endMinutes - STANDARD_END_MINUTES);
+  const afternoonMinutes = Math.max(0, rawAfternoonMinutes - (afterSchoolApplied ? deductionMinutes : 0));
+  return {
+    morningExtra: formatDuration(morningMinutes),
+    afternoonExtra: formatDuration(afternoonMinutes),
+    dailyTotal: formatDuration(morningMinutes + afternoonMinutes),
+  };
+}
+
+function parseTimeToMinutes(value) {
+  const text = String(value || '').trim();
+  const match = text.match(/(\d{1,2}):(\d{2})/);
+  if (!match) return null;
+  let hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return null;
+  if (/오후|PM/i.test(text) && hours < 12) hours += 12;
+  if (/오전|AM/i.test(text) && hours === 12) hours = 0;
+  return hours * 60 + minutes;
+}
+
+function formatDuration(totalMinutes) {
+  const minutes = Math.max(0, Math.round(totalMinutes));
+  return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`;
 }
 
 function nowText() {
