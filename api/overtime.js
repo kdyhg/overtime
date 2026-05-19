@@ -6,7 +6,6 @@ const DB_SHEET_NAME = process.env.DB_SHEET_NAME || '통합DB';
 const HISTORY_SHEET_NAME = process.env.HISTORY_SHEET_NAME || '수정이력';
 const USERS_SHEET_NAME = process.env.USERS_SHEET_NAME || '사용자';
 const LOCKS_SHEET_NAME = process.env.LOCKS_SHEET_NAME || '월마감';
-const SIGNUP_CODE = process.env.SIGNUP_CODE || '';
 
 const INTERNAL_SHEETS = new Set([
   TEMPLATE_SHEET_NAME,
@@ -55,13 +54,6 @@ async function handlePublicAction(action, body, sheets, spreadsheetId) {
 
   if (action === 'signup') {
     const users = await getUsers(sheets, spreadsheetId);
-    if (users.length > 0 && !SIGNUP_CODE) {
-      return { status: 403, body: { error: '추가 회원가입을 사용하려면 Vercel 환경변수 SIGNUP_CODE를 설정해 주세요.' } };
-    }
-    if (users.length > 0 && String(body.signupCode || '') !== SIGNUP_CODE) {
-      return { status: 401, body: { error: '가입코드가 올바르지 않습니다.' } };
-    }
-
     const username = normalizeUsername(body.username);
     const displayName = normalizeDisplayName(body.displayName);
     const password = String(body.password || '');

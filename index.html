@@ -183,7 +183,6 @@
         <input id="signup-name" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="text" autocomplete="name" placeholder="이름">
         <input id="signup-password" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="password" autocomplete="new-password" placeholder="비밀번호">
         <input id="signup-recovery" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="password" placeholder="복구코드">
-        <input id="signup-code" class="h-12 w-full rounded-lg border border-[#d2d2d7] bg-[#f5f5f7] px-4 outline-none focus:border-[#0071e3]" type="password" placeholder="가입코드">
         <button class="flex h-12 w-full items-center justify-center rounded-full bg-[#0066cc] font-semibold text-white active:scale-[0.98]" type="submit">가입하고 시작</button>
       </form>
 
@@ -425,7 +424,6 @@
         displayName: $('#signup-name').value,
         password: $('#signup-password').value,
         recoveryCode: $('#signup-recovery').value,
-        signupCode: $('#signup-code').value,
       }, { publicRequest: true });
       if (result.error) return setAuthMessage(result.error);
       acceptAuth(result);
